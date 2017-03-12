@@ -1,13 +1,15 @@
 package com.sourcey.linachatbot;
 
 import android.content.Intent;
-import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
+import android.support.v7.app.ActionBarActivity;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 
 
 public class MainActivity extends ActionBarActivity {
+    private static final int REQUEST_AUTHENTICATION = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -16,7 +18,14 @@ public class MainActivity extends ActionBarActivity {
 
 
         Intent intent = new Intent(this, LoginActivity.class);
-        startActivity(intent);
+        startActivityForResult(intent, 0);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == REQUEST_AUTHENTICATION && resultCode == RESULT_OK && data != null) {
+            Log.v("token", data.getStringExtra("token"));
+        }
     }
 
     @Override

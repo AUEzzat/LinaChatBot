@@ -1,8 +1,10 @@
 package com.sourcey.linachatbot;
 
+import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
@@ -11,21 +13,37 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import butterknife.ButterKnife;
-import butterknife.Bind;
+import java.util.regex.Pattern;
 
-public class SignupActivity extends AppCompatActivity {
+import butterknife.Bind;
+import butterknife.ButterKnife;
+
+public class SignupActivity extends AppCompatActivity implements OnTaskCompleted {
     private static final String TAG = "SignupActivity";
 
-    @Bind(R.id.input_name) EditText _nameText;
-    @Bind(R.id.input_address) EditText _addressText;
+    @Bind(R.id.input_username) EditText _username;
     @Bind(R.id.input_email) EditText _emailText;
-    @Bind(R.id.input_mobile) EditText _mobileText;
     @Bind(R.id.input_password) EditText _passwordText;
     @Bind(R.id.input_reEnterPassword) EditText _reEnterPasswordText;
     @Bind(R.id.btn_signup) Button _signupButton;
     @Bind(R.id.link_login) TextView _loginLink;
-    
+
+    private String username;
+    private String email;
+    private String retrievedUsername;
+    private String retrievedEmail;
+    private String password;
+    private String serverStatus;
+    ProgressDialog progressDialog;
+    private Handler delayHandler = new android.os.Handler();
+    private Runnable delayRunnable = new Runnable() {
+        public void run() {
+            serverStatus = "failed to reach server";
+            onSignupFailed();
+            progressDialog.dismiss();
+        }
+    };
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -59,70 +77,75 @@ public class SignupActivity extends AppCompatActivity {
             return;
         }
 
+        // signup logic.
+        getToken getToken = new getToken(new Activity(), getBaseContext(), "...", SignupActivity.this);
+        getToken.setType(1);
+        getToken.execute(username, email, password);
+
         _signupButton.setEnabled(false);
 
-        final ProgressDialog progressDialog = new ProgressDialog(SignupActivity.this,
+        progressDialog = new ProgressDialog(SignupActivity.this,
                 R.style.AppTheme_Dark_Dialog);
         progressDialog.setIndeterminate(true);
         progressDialog.setMessage("Creating Account...");
         progressDialog.show();
 
-        String name = _nameText.getText().toString();
-        String address = _addressText.getText().toString();
-        String email = _emailText.getText().toString();
-        String mobile = _mobileText.getText().toString();
-        String password = _passwordText.getText().toString();
-        String reEnterPassword = _reEnterPasswordText.getText().toString();
-
-        // TODO: Implement your own signup logic here.
-
-        new android.os.Handler().postDelayed(
-                new Runnable() {
-                    public void run() {
-                        // On complete call either onSignupSuccess or onSignupFailed
-                        // depending on success
-                        onSignupSuccess();
-                        // onSignupFailed();
-                        progressDialog.dismiss();
-                    }
-                }, 3000);
+        delayHandler.postDelayed(delayRunnable, 10000);
     }
 
+    @Override
+    public void onBackPressed() {
+        // Disable going back to the MainActivity
+        Intent intent = new Intent(getApplicationContext(),LoginActivity.class);
+        startActivity(intent);
+        finish();
+        overridePendingTransition(R.anim.push_left_in, R.anim.push_left_out);
+    }
 
     public void onSignupSuccess() {
         _signupButton.setEnabled(true);
-        setResult(RESULT_OK, null);
+        Intent signInIntent = new Intent(getBaseContext(), LoginActivity.class);
+        signInIntent.putExtra("username",username);
+        signInIntent.putExtra("email",email);
+        signInIntent.putExtra("password",password);
+        setResult(RESULT_OK, signInIntent);
         finish();
     }
 
     public void onSignupFailed() {
-        Toast.makeText(getBaseContext(), "Login failed", Toast.LENGTH_LONG).show();
-
+        String toastText;
+        if(serverStatus == null) {
+            toastText = "Enter a valid data";
+        }
+        else if(serverStatus.equals("bad input")) {
+            toastText = "Already exists";
+            if(retrievedUsername != null && retrievedUsername.equals("A user with that username already exists.")) {
+                _username.setError("Username already exists choose another username or login");
+            }
+            if(retrievedEmail != null && retrievedEmail.equals("This user has already registered")) {
+                _emailText.setError("Email already registered please login");
+            }
+        }
+        else {
+            toastText = "Couldn't reach server";
+        }
+        Toast.makeText(getBaseContext(), toastText, Toast.LENGTH_LONG).show();
         _signupButton.setEnabled(true);
     }
 
     public boolean validate() {
         boolean valid = true;
 
-        String name = _nameText.getText().toString();
-        String address = _addressText.getText().toString();
-        String email = _emailText.getText().toString();
-        String mobile = _mobileText.getText().toString();
-        String password = _passwordText.getText().toString();
+        username = _username.getText().toString();
+        email = _emailText.getText().toString();
+        password = _passwordText.getText().toString();
         String reEnterPassword = _reEnterPasswordText.getText().toString();
 
-        if (name.isEmpty() || name.length() < 3) {
-            _nameText.setError("at least 3 characters");
+        if (username.isEmpty() || !Pattern.compile("^[a-z0-9_-]{3,15}$").matcher(username).matches()) {
+            _username.setError("enter a valid username,\n characters, numerals and [-,_] are allowed only");
             valid = false;
         } else {
-            _nameText.setError(null);
-        }
-
-        if (address.isEmpty()) {
-            _addressText.setError("Enter Valid Address");
-            valid = false;
-        } else {
-            _addressText.setError(null);
+            _username.setError(null);
         }
 
 
@@ -131,13 +154,6 @@ public class SignupActivity extends AppCompatActivity {
             valid = false;
         } else {
             _emailText.setError(null);
-        }
-
-        if (mobile.isEmpty() || mobile.length()!=10) {
-            _mobileText.setError("Enter Valid Mobile Number");
-            valid = false;
-        } else {
-            _mobileText.setError(null);
         }
 
         if (password.isEmpty() || password.length() < 4 || password.length() > 10) {
@@ -155,5 +171,22 @@ public class SignupActivity extends AppCompatActivity {
         }
 
         return valid;
+    }
+
+    public void onTaskCompleted(DefaultHashMap<String, String> data) {
+
+        retrievedUsername = data.get("username");
+        retrievedEmail = data.get("email");
+        serverStatus = data.get("server status");
+
+        // On complete call either onLoginSuccess or onLoginFailed
+        if(serverStatus.equals("success") && username.equals(retrievedUsername) && email.equals(retrievedEmail)) {
+            onSignupSuccess();
+        }
+        else {
+            onSignupFailed();
+        }
+        progressDialog.dismiss();
+        delayHandler.removeCallbacks(delayRunnable);
     }
 }
