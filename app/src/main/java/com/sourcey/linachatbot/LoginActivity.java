@@ -1,6 +1,5 @@
 package com.sourcey.linachatbot;
 
-import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Intent;
 import android.os.Bundle;
@@ -86,7 +85,7 @@ public class LoginActivity extends AppCompatActivity implements OnTaskCompleted 
         }
 
         // authentication logic.
-        getToken getToken = new getToken(new Activity(), getBaseContext(), "...", LoginActivity.this);
+        getToken getToken = new getToken(null, null, null, LoginActivity.this);
         getToken.setType(0);
         getToken.execute(username, email, password);
 
@@ -97,7 +96,7 @@ public class LoginActivity extends AppCompatActivity implements OnTaskCompleted 
         progressDialog.setIndeterminate(true);
         progressDialog.setMessage("Authenticating...");
         progressDialog.show();
-        delayHandler.postDelayed(delayRunnable, 10000);
+        delayHandler.postDelayed(delayRunnable, 20000);
     }
 
 
@@ -118,7 +117,7 @@ public class LoginActivity extends AppCompatActivity implements OnTaskCompleted 
     }
 
     public void onLoginSuccess() {
-        _loginButton.setEnabled(true);
+        _loginButton.setEnabled(false);
         Intent chatIntent = new Intent(getBaseContext(), MainActivity.class);
         chatIntent.putExtra("token", Token);
         setResult(RESULT_OK, chatIntent);
