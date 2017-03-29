@@ -1,7 +1,6 @@
 package com.sourcey.linachatbot;
 
 import android.content.Intent;
-import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -37,14 +36,58 @@ import co.intentservice.chatui.models.ChatMessage;
 
 public class MainActivity extends AppCompatActivity implements OnTaskCompleted {
     private static final int REQUEST_AUTHENTICATION = 0;
-    ChatView chatView;
-    getResponse getResponse;
+    private ChatView chatView;
+    private getResponse getResponse;
+    private String token;
+
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putString("token", token);
+    }
+
+    private void sendButton(final String token) {
+        chatView.setOnSentMessageListener(new ChatView.OnSentMessageListener() {
+
+            @Override
+            public boolean sendMessage(ChatMessage ChatMessage) {
+                if (getResponse != null && getResponse.open) {
+                    JSONObject messageJSON = new JSONObject();
+                    try {
+                        messageJSON.put("command", "send");
+                        messageJSON.put("message", ChatMessage.getMessage());
+                        messageJSON.put("token", token);
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                        Toast.makeText(getBaseContext(), "failed to send message", Toast.LENGTH_LONG).show();
+                        return false;
+                    }
+                    getResponse.send(messageJSON.toString());
+                    return true;
+                } else {
+                    setGetResponse(token);
+                    Toast.makeText(getBaseContext(), "failed to send message", Toast.LENGTH_LONG).show();
+                    return false;
+                }
+            }
+        });
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        getActionBar().setBackgroundDrawable(new ColorDrawable(getResources().getColor(R.color.primary)));
+        chatView = (ChatView) findViewById(R.id.chat_view);
+//        if (savedInstanceState != null) {
+//            String token = savedInstanceState.getString("token");
+//            if(token != null) {
+//                this.token = token;
+//                getOldMessages getOldMessages = new getOldMessages();
+//                getOldMessages.execute(token, "10");
+////                sendButton(token);
+//                return;
+//            }
+//        }
         Intent intent = new Intent(this, LoginActivity.class);
         startActivityForResult(intent, 0);
     }
@@ -59,6 +102,7 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted {
         URI webSocketUri = null;
         try {
             webSocketUri = new URI(webSocketUriBuilder.toString());
+            Log.v("anroid",webSocketUri.toString());
         } catch (URISyntaxException e) {
             e.printStackTrace();
         }
@@ -73,40 +117,16 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted {
         }
         getResponse.connect();
     }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == REQUEST_AUTHENTICATION && resultCode == RESULT_OK && data != null) {
-            Log.v("token", data.getStringExtra("token"));
-            chatView = (ChatView) findViewById(R.id.chat_view);
-
             final String token = data.getStringExtra("token");
-            getOldMessages getToken = new getOldMessages();
-            getToken.execute("jwt " + token, "4");
+            this.token = "jwt " + token;
+            getOldMessages getOldMessages = new getOldMessages();
+            getOldMessages.execute(this.token, "10");
             setGetResponse(token);
-            chatView.setOnSentMessageListener(new ChatView.OnSentMessageListener() {
-
-                @Override
-                public boolean sendMessage(ChatMessage chatMessage) {
-                    if (getResponse.open) {
-                        JSONObject messageJSON = new JSONObject();
-                        try {
-                            messageJSON.put("command", "send");
-                            messageJSON.put("message", chatMessage.getMessage());
-                            messageJSON.put("token", token);
-                        } catch (JSONException e) {
-                            e.printStackTrace();
-                            Toast.makeText(getBaseContext(), "failed to send message", Toast.LENGTH_LONG).show();
-                            return false;
-                        }
-                        getResponse.send(messageJSON.toString());
-                        return true;
-                    } else {
-                        setGetResponse(token);
-                        Toast.makeText(getBaseContext(), "failed to send message", Toast.LENGTH_LONG).show();
-                        return false;
-                    }
-                }
-            });
+            sendButton(token);
         }
     }
 
@@ -135,10 +155,11 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted {
     @Override
     public void onTaskCompleted(DefaultHashMap<String, String> data) {
         String messageText = data.get("message");
+        String formattedTime = data.get("time");
         final ChatMessage message = new ChatMessage(messageText, System.nanoTime(), ChatMessage.Type.RECEIVED);
-        runOnUiThread(new Runnable(){
+        runOnUiThread(new Runnable() {
             @Override
-            public void run(){
+            public void run() {
                 chatView.addMessage(message);
             }
         });
@@ -232,6 +253,8 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted {
         protected void onPostExecute(ArrayList<ChatMessage> oldMessages) {
             if (oldMessages != null) {
                 chatView.addMessages(oldMessages);
+            } else {
+                Toast.makeText(getBaseContext(), "failed to retrieve old messages", Toast.LENGTH_LONG).show();
             }
         }
     }

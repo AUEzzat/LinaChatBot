@@ -22,7 +22,7 @@ public class LoginActivity extends AppCompatActivity implements OnTaskCompleted 
     private static final int REQUEST_SIGNUP = 0;
 
     @Bind(R.id.input_username)
-    EditText _usernameText;
+    EditText _username;
     @Bind(R.id.input_email)
     EditText _emailText;
     @Bind(R.id.input_password)
@@ -35,8 +35,11 @@ public class LoginActivity extends AppCompatActivity implements OnTaskCompleted 
     private String username;
     private String email;
     private String password;
-    private String Token = null;
-    private String serverStatus = null;
+    private String retrievedUsername;
+    private String retrievedEmail;
+    private String retrievedPassword;
+    private String Token;
+    private String serverStatus;
     private ProgressDialog progressDialog;
     private Handler delayHandler = new android.os.Handler();
     private Runnable delayRunnable = new Runnable() {
@@ -103,7 +106,7 @@ public class LoginActivity extends AppCompatActivity implements OnTaskCompleted 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == REQUEST_SIGNUP && resultCode == RESULT_OK && data != null) {
-            _usernameText.setText(data.getStringExtra("username"));
+            _username.setText(data.getStringExtra("username"));
             _emailText.setText(data.getStringExtra("email"));
             _passwordText.setText(data.getStringExtra("password"));
             login();
@@ -128,28 +131,39 @@ public class LoginActivity extends AppCompatActivity implements OnTaskCompleted 
         String toastText;
         if (serverStatus == null) {
             toastText = "Enter a valid data";
-        } else if (serverStatus.equals("bad input")) {
+        } else if (serverStatus != null && serverStatus.equals("bad input")) {
             toastText = "Bad Login Credentials";
+            if (retrievedUsername != null && retrievedUsername.equals("This username is not valid.")) {
+                _username.setError("Username doesn't exist");
+                toastText = "Username doesn't exist";
+            }
+            if (retrievedEmail != null && retrievedEmail.equals("This email is not valid.")) {
+                _emailText.setError("Email doesn't exist");
+                toastText = "Email doesn't exist";
+            }
+            if (retrievedPassword != null && retrievedPassword.equals("Incorrect credentials please try again")) {
+                _passwordText.setError("Incorrect password");
+                toastText = "Incorrect password";
+            }
         } else {
             toastText = "Couldn't reach server";
         }
         Toast.makeText(getBaseContext(), toastText, Toast.LENGTH_LONG).show();
-
         _loginButton.setEnabled(true);
     }
 
     public boolean validate() {
         boolean valid = true;
 
-        username = _usernameText.getText().toString();
+        username = _username.getText().toString();
         email = _emailText.getText().toString();
         password = _passwordText.getText().toString();
 
         if (username.isEmpty() || !Pattern.compile("^[a-z0-9_-]{3,15}$").matcher(username).matches()) {
-            _usernameText.setError("enter a valid username");
+            _username.setError("enter a valid username");
             valid = false;
         } else {
-            _usernameText.setError(null);
+            _username.setError(null);
         }
         if (email.isEmpty() || !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
             _emailText.setError("enter a valid email address");
@@ -157,7 +171,7 @@ public class LoginActivity extends AppCompatActivity implements OnTaskCompleted 
         } else {
             _emailText.setError(null);
         }
-        if (_usernameText.getError() == null || _emailText.getError() == null) {
+        if (_username.getError() == null || _emailText.getError() == null) {
             valid = true;
         }
         if (password.isEmpty() || password.length() < 4 || password.length() > 10) {
@@ -172,6 +186,9 @@ public class LoginActivity extends AppCompatActivity implements OnTaskCompleted 
 
     public void onTaskCompleted(DefaultHashMap<String, String> data) {
         Token = data.get("token");
+        retrievedUsername = data.get("username");
+        retrievedEmail = data.get("email");
+        retrievedPassword = data.get("password");
         serverStatus = data.get("server status");
         System.out.println(Token);
         // On complete call either onLoginSuccess or onLoginFailed

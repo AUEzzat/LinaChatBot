@@ -138,28 +138,31 @@ public class getToken extends AsyncTask<String, Void, DefaultHashMap<String, Str
             }
             if (canReachServer) {
                 data.put("server status", "bad input");
-                if (type.equals("login")) {
-                    //TODO: leave empty or add empty string to token
-                } else {
-                    JSONObject jObject = new JSONObject(tokenJSONStr);
-                    Iterator<String> keys = jObject.keys();
-                    while(keys.hasNext()) {
-                        String nextKey = keys.next();
-                        if(nextKey.equals("username")) {
-                            data.put("username", new JSONObject(tokenJSONStr).getJSONArray("username").getString(0));
-                        }
-                        else if(nextKey.equals("email")) {
-                            data.put("email", new JSONObject(tokenJSONStr).getJSONArray("email").getString(0));
-                        }
+//                if (type.equals("login")) {
+//                    //TODO: leave empty or add empty string to token
+//                } else {
+                JSONObject jObject = new JSONObject(tokenJSONStr);
+                Iterator<String> keys = jObject.keys();
+                while (keys.hasNext()) {
+                    String nextKey = keys.next();
+                    if (nextKey.equals("username")) {
+                        data.put("username", new JSONObject(tokenJSONStr).getJSONArray("username").getString(0));
+                    } else if (nextKey.equals("email")) {
+                        data.put("email", new JSONObject(tokenJSONStr).getJSONArray("email").getString(0));
+                    } else if (nextKey.equals("password")) {
+                        data.put("password", new JSONObject(tokenJSONStr).getJSONArray("password").getString(0));
                     }
-                    if(!data.containsKey("username")) {
-                        data.put("username", username);
-                    }
-                    if(!data.containsKey("email")) {
-                        data.put("email", email);
-                    }
+                }
+                if (!data.containsKey("username")) {
+                    data.put("username", username);
+                }
+                if (!data.containsKey("email")) {
+                    data.put("email", email);
+                }
+                if (!data.containsKey("email")) {
                     data.put("password", password);
                 }
+//                }
             }
         } catch (JSONException e) {
             Log.e(LOG_TAG, e.getMessage(), e);

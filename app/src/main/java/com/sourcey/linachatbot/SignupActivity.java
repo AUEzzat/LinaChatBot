@@ -21,12 +21,18 @@ import butterknife.ButterKnife;
 public class SignupActivity extends AppCompatActivity implements OnTaskCompleted {
     private static final String TAG = "SignupActivity";
 
-    @Bind(R.id.input_username) EditText _username;
-    @Bind(R.id.input_email) EditText _emailText;
-    @Bind(R.id.input_password) EditText _passwordText;
-    @Bind(R.id.input_reEnterPassword) EditText _reEnterPasswordText;
-    @Bind(R.id.btn_signup) Button _signupButton;
-    @Bind(R.id.link_login) TextView _loginLink;
+    @Bind(R.id.input_username)
+    EditText _username;
+    @Bind(R.id.input_email)
+    EditText _emailText;
+    @Bind(R.id.input_password)
+    EditText _passwordText;
+    @Bind(R.id.input_reEnterPassword)
+    EditText _reEnterPasswordText;
+    @Bind(R.id.btn_signup)
+    Button _signupButton;
+    @Bind(R.id.link_login)
+    TextView _loginLink;
 
     private String username;
     private String email;
@@ -61,7 +67,7 @@ public class SignupActivity extends AppCompatActivity implements OnTaskCompleted
             @Override
             public void onClick(View v) {
                 // Finish the registration screen and return to the Login activity
-                Intent intent = new Intent(getApplicationContext(),LoginActivity.class);
+                Intent intent = new Intent(getApplicationContext(), LoginActivity.class);
                 startActivity(intent);
                 finish();
                 overridePendingTransition(R.anim.push_left_in, R.anim.push_left_out);
@@ -96,7 +102,7 @@ public class SignupActivity extends AppCompatActivity implements OnTaskCompleted
     @Override
     public void onBackPressed() {
         // Disable going back to the MainActivity
-        Intent intent = new Intent(getApplicationContext(),LoginActivity.class);
+        Intent intent = new Intent(getApplicationContext(), LoginActivity.class);
         startActivity(intent);
         finish();
         overridePendingTransition(R.anim.push_left_in, R.anim.push_left_out);
@@ -105,28 +111,28 @@ public class SignupActivity extends AppCompatActivity implements OnTaskCompleted
     public void onSignupSuccess() {
         _signupButton.setEnabled(true);
         Intent signInIntent = new Intent(getBaseContext(), LoginActivity.class);
-        signInIntent.putExtra("username",username);
-        signInIntent.putExtra("email",email);
-        signInIntent.putExtra("password",password);
+        signInIntent.putExtra("username", username);
+        signInIntent.putExtra("email", email);
+        signInIntent.putExtra("password", password);
         setResult(RESULT_OK, signInIntent);
         finish();
     }
 
     public void onSignupFailed() {
         String toastText;
-        if(serverStatus == null) {
+        if (serverStatus == null) {
             toastText = "Enter a valid data";
-        }
-        else if(serverStatus.equals("bad input")) {
-            toastText = "Already exists";
-            if(retrievedUsername != null && retrievedUsername.equals("A user with that username already exists.")) {
+        } else if (serverStatus != null && serverStatus.equals("bad input")) {
+            toastText = "User already exists";
+            if (retrievedUsername != null && retrievedUsername.equals("A user with that username already exists.")) {
                 _username.setError("Username already exists choose another username or login");
+                toastText = "Username already exists";
             }
-            if(retrievedEmail != null && retrievedEmail.equals("This user has already registered")) {
+            if (retrievedEmail != null && retrievedEmail.equals("This user has already registered")) {
                 _emailText.setError("Email already registered please login");
+                toastText = "Email already exists";
             }
-        }
-        else {
+        } else {
             toastText = "Couldn't reach server";
         }
         Toast.makeText(getBaseContext(), toastText, Toast.LENGTH_LONG).show();
@@ -180,10 +186,9 @@ public class SignupActivity extends AppCompatActivity implements OnTaskCompleted
         serverStatus = data.get("server status");
 
         // On complete call either onLoginSuccess or onLoginFailed
-        if(serverStatus.equals("success") && username.equals(retrievedUsername) && email.equals(retrievedEmail)) {
+        if (serverStatus.equals("success") && username.equals(retrievedUsername) && email.equals(retrievedEmail)) {
             onSignupSuccess();
-        }
-        else {
+        } else {
             onSignupFailed();
         }
         progressDialog.dismiss();

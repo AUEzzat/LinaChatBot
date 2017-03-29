@@ -57,8 +57,10 @@ public class getResponse extends WebSocketClient {
             replyJSON = new JSONObject(message);
             String replyMsg = replyJSON.getString("msg");
             String owner = replyJSON.getString("owner");
+            String messageTime = replyJSON.getString("timestamp");
             DefaultHashMap<String, String> data = new DefaultHashMap<>("");
 //            data.put("type", "getResponse");
+            data.put("time",messageTime);
             data.put("message", replyMsg);
             if(owner.equals("bot")) {
                 listener.onTaskCompleted(data);
