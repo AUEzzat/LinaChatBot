@@ -190,7 +190,6 @@ public class LoginActivity extends AppCompatActivity implements OnTaskCompleted 
         retrievedEmail = data.get("email");
         retrievedPassword = data.get("password");
         serverStatus = data.get("server status");
-        System.out.println(Token);
         // On complete call either onLoginSuccess or onLoginFailed
         if (serverStatus.equals("success") && !Token.equals("")) {
             onLoginSuccess();

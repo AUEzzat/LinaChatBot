@@ -102,7 +102,6 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted {
         URI webSocketUri = null;
         try {
             webSocketUri = new URI(webSocketUriBuilder.toString());
-            Log.v("anroid",webSocketUri.toString());
         } catch (URISyntaxException e) {
             e.printStackTrace();
         }
@@ -155,8 +154,8 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted {
     @Override
     public void onTaskCompleted(DefaultHashMap<String, String> data) {
         String messageText = data.get("message");
-        String formattedTime = data.get("time");
-        final ChatMessage message = new ChatMessage(messageText, System.nanoTime(), ChatMessage.Type.RECEIVED);
+        Long formattedTime = Long.parseLong(data.get("formattedTime"));
+        final ChatMessage message = new ChatMessage(messageText, formattedTime, ChatMessage.Type.RECEIVED);
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -179,12 +178,12 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted {
 
                 String messageText = oldMessage.getString("message");
                 String humanUser = oldMessage.getString("owner");
-                String messageTime = oldMessage.getString("timestamp");
+                Long messageTime = Long.parseLong(oldMessage.getString("formated_timestamp"));
                 ChatMessage.Type messageType = ChatMessage.Type.RECEIVED;
                 if (humanUser.equals("user")) {
                     messageType = ChatMessage.Type.SENT;
                 }
-                oldMessages.add(new ChatMessage(messageText, System.nanoTime(), messageType));
+                oldMessages.add(new ChatMessage(messageText, messageTime, messageType));
             }
             Collections.reverse(oldMessages);
             return oldMessages;
