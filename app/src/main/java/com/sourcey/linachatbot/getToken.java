@@ -138,9 +138,6 @@ public class getToken extends AsyncTask<String, Void, DefaultHashMap<String, Str
             }
             if (canReachServer) {
                 data.put("server status", "bad input");
-//                if (type.equals("login")) {
-//                    //TODO: leave empty or add empty string to token
-//                } else {
                 JSONObject jObject = new JSONObject(tokenJSONStr);
                 Iterator<String> keys = jObject.keys();
                 while (keys.hasNext()) {

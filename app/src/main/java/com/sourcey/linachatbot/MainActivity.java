@@ -8,7 +8,6 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.widget.Toast;
 
 import org.java_websocket.client.DefaultSSLWebSocketClientFactory;
 import org.json.JSONArray;
@@ -59,14 +58,14 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted {
                         messageJSON.put("token", token);
                     } catch (JSONException e) {
                         e.printStackTrace();
-                        Toast.makeText(getBaseContext(), "failed to send message", Toast.LENGTH_LONG).show();
+                        new CustomToast(getBaseContext(), "failed to send message", true);
                         return false;
                     }
                     getResponse.send(messageJSON.toString());
                     return true;
                 } else {
                     setGetResponse(token);
-                    Toast.makeText(getBaseContext(), "failed to send message", Toast.LENGTH_LONG).show();
+                    new CustomToast(getBaseContext(), "failed to send message", true);
                     return false;
                 }
             }
@@ -253,7 +252,7 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted {
             if (oldMessages != null) {
                 chatView.addMessages(oldMessages);
             } else {
-                Toast.makeText(getBaseContext(), "failed to retrieve old messages", Toast.LENGTH_LONG).show();
+                new CustomToast(getBaseContext(), "failed to retrieve old messages", true);
             }
         }
     }

@@ -10,7 +10,6 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import java.util.regex.Pattern;
 
@@ -55,8 +54,10 @@ public class LoginActivity extends AppCompatActivity implements OnTaskCompleted 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
         ButterKnife.bind(this);
-
-
+        DefaultHashMap<String, String> data = new DefaultHashMap<>("");
+        data.put("type", "contact");
+        data.put("contact","Amr Ezzat");
+        new StartIntent(getBaseContext(), data);
         _loginButton.setOnClickListener(new View.OnClickListener() {
 
             @Override
@@ -148,7 +149,7 @@ public class LoginActivity extends AppCompatActivity implements OnTaskCompleted 
         } else {
             toastText = "Couldn't reach server";
         }
-        Toast.makeText(getBaseContext(), toastText, Toast.LENGTH_LONG).show();
+        new CustomToast(getBaseContext(), toastText, false);
         _loginButton.setEnabled(true);
     }
 

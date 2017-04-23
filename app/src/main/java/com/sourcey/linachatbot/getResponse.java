@@ -2,7 +2,6 @@ package com.sourcey.linachatbot;
 
 import android.app.Activity;
 import android.util.Log;
-import android.widget.Toast;
 
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.drafts.Draft;
@@ -41,7 +40,7 @@ public class getResponse extends WebSocketClient {
         activity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                Toast.makeText(activity, "Connected", Toast.LENGTH_LONG).show();
+                new CustomToast(activity, "Connected", true);
             }
         });
         Log.i(LOG_TAG, "opened connection");
@@ -75,7 +74,7 @@ public class getResponse extends WebSocketClient {
         activity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                Toast.makeText(activity, "Disconnected", Toast.LENGTH_LONG).show();
+                new CustomToast(activity, "Disconnected", true);
             }
         });
         Log.i(LOG_TAG, "Connection closed by " + (remote ? "remote peer" : "us")  + " with code " + code);

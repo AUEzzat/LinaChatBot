@@ -11,7 +11,6 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import java.util.regex.Pattern;
 
@@ -135,7 +134,7 @@ public class SignupActivity extends AppCompatActivity implements OnTaskCompleted
         } else {
             toastText = "Couldn't reach server";
         }
-        Toast.makeText(getBaseContext(), toastText, Toast.LENGTH_LONG).show();
+        new CustomToast(getBaseContext(), toastText, false);
         _signupButton.setEnabled(true);
     }
 
