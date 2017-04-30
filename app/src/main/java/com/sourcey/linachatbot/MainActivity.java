@@ -46,7 +46,6 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
     private ChatView chatView;
     private getResponse getResponse;
     private String token;
-    private NetworkStateReceiver networkStateReceiver;
     private TSnackbar snackbar;
 
     @Override
@@ -87,6 +86,7 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
     public void networkAvailable() {
         if(snackbar != null)
             snackbar.dismiss();
+        setGetResponse(token);
     }
 
     @Override
@@ -107,7 +107,7 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         chatView = (ChatView) findViewById(R.id.chat_view);
-        networkStateReceiver = new NetworkStateReceiver();
+        NetworkStateReceiver networkStateReceiver = new NetworkStateReceiver();
         networkStateReceiver.addListener(this);
         this.registerReceiver(networkStateReceiver, new IntentFilter(android.net.ConnectivityManager.CONNECTIVITY_ACTION));
         SharedPreferences mPrefs = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
@@ -117,11 +117,11 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
             User user = gson.fromJson(json, User.class);
             double timeDifference = (System.nanoTime() - user.getTokenTime()) / 1e9;
             if(timeDifference < 86400) {
-                this.token = "jwt " + user.getToken();
+                this.token = user.getToken();
                 getOldMessages getOldMessages = new getOldMessages();
-                getOldMessages.execute(this.token, "10");
-                setGetResponse(user.getToken());
-                sendButton(user.getToken());
+                getOldMessages.execute("jwt "+this.token, "10");
+                setGetResponse(this.token);
+                sendButton(this.token);
             }
             return;
         }
