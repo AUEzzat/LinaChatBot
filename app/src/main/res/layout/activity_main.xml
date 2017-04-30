@@ -4,6 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
 
     style="@style/AppTheme.Dark"
+    android:id="@+id/main_view"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:gravity="center_horizontal"

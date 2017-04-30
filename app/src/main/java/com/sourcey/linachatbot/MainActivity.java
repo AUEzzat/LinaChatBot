@@ -1,13 +1,22 @@
 package com.sourcey.linachatbot;
 
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.SharedPreferences;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+
+import com.androidadvance.topsnackbar.TSnackbar;
+import com.google.gson.Gson;
+import com.sourcey.linachatbot.NetworkStateReceiver.NetworkStateReceiverListener;
 
 import org.java_websocket.client.DefaultSSLWebSocketClientFactory;
 import org.json.JSONArray;
@@ -32,12 +41,13 @@ import javax.net.ssl.SSLContext;
 import co.intentservice.chatui.ChatView;
 import co.intentservice.chatui.models.ChatMessage;
 
-
-public class MainActivity extends AppCompatActivity implements OnTaskCompleted {
+public class MainActivity extends AppCompatActivity implements OnTaskCompleted, NetworkStateReceiverListener {
     private static final int REQUEST_AUTHENTICATION = 0;
     private ChatView chatView;
     private getResponse getResponse;
     private String token;
+    private NetworkStateReceiver networkStateReceiver;
+    private TSnackbar snackbar;
 
     @Override
     public void onSaveInstanceState(Bundle outState) {
@@ -72,21 +82,49 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted {
         });
     }
 
+
+    @Override
+    public void networkAvailable() {
+        if(snackbar != null)
+            snackbar.dismiss();
+    }
+
+    @Override
+    public void networkUnavailable() {
+        snackbar = TSnackbar.make(findViewById(R.id.main_view), "Not Connected", TSnackbar.LENGTH_INDEFINITE);
+        snackbar.setAction("Dismiss", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+            }
+        }).setActionTextColor(Color.WHITE);;
+        View snackbarView = snackbar.getView();
+        snackbarView.setBackgroundColor(Color.parseColor("#FF8A80"));
+        snackbar.show();
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         chatView = (ChatView) findViewById(R.id.chat_view);
-//        if (savedInstanceState != null) {
-//            String token = savedInstanceState.getString("token");
-//            if(token != null) {
-//                this.token = token;
-//                getOldMessages getOldMessages = new getOldMessages();
-//                getOldMessages.execute(token, "10");
-////                sendButton(token);
-//                return;
-//            }
-//        }
+        networkStateReceiver = new NetworkStateReceiver();
+        networkStateReceiver.addListener(this);
+        this.registerReceiver(networkStateReceiver, new IntentFilter(android.net.ConnectivityManager.CONNECTIVITY_ACTION));
+        SharedPreferences mPrefs = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
+        Gson gson = new Gson();
+        String json = mPrefs.getString("user", "");
+        if(!json.equals("")) {
+            User user = gson.fromJson(json, User.class);
+            double timeDifference = (System.nanoTime() - user.getTokenTime()) / 1e9;
+            if(timeDifference < 86400) {
+                this.token = "jwt " + user.getToken();
+                getOldMessages getOldMessages = new getOldMessages();
+                getOldMessages.execute(this.token, "10");
+                setGetResponse(user.getToken());
+                sendButton(user.getToken());
+            }
+            return;
+        }
         Intent intent = new Intent(this, LoginActivity.class);
         startActivityForResult(intent, 0);
     }
@@ -144,6 +182,8 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted {
 
         //noinspection SimplifiableIfStatement
         if (id == R.id.action_settings) {
+            Intent intent = new Intent(this, LoginActivity.class);
+            startActivityForResult(intent, 0);
             return true;
         }
 

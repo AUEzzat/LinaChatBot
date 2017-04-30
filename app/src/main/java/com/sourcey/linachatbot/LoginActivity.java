@@ -2,14 +2,18 @@ package com.sourcey.linachatbot;
 
 import android.app.ProgressDialog;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
+import android.preference.PreferenceManager;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+
+import com.google.gson.Gson;
 
 import java.util.regex.Pattern;
 
@@ -49,15 +53,16 @@ public class LoginActivity extends AppCompatActivity implements OnTaskCompleted 
         }
     };
 
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
         ButterKnife.bind(this);
-        DefaultHashMap<String, String> data = new DefaultHashMap<>("");
-        data.put("type", "contact");
-        data.put("contact","Amr Ezzat");
-        new StartIntent(getBaseContext(), data);
+//        DefaultHashMap<String, String> data = new DefaultHashMap<>("");
+//        data.put("type", "contact");
+//        data.put("contact","Amr Ezzat");
+//        new StartIntent(getBaseContext(), data);
         _loginButton.setOnClickListener(new View.OnClickListener() {
 
             @Override
@@ -77,6 +82,16 @@ public class LoginActivity extends AppCompatActivity implements OnTaskCompleted 
                 overridePendingTransition(R.anim.push_left_in, R.anim.push_left_out);
             }
         });
+
+        SharedPreferences mPrefs = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
+        Gson gson = new Gson();
+        String json = mPrefs.getString("user", "");
+        if(!json.equals("")) {
+            User user = gson.fromJson(json, User.class);
+            _username.setText(user.getUserName());
+            _emailText.setText(user.getEmail());
+            _passwordText.setText(user.getPassword());
+        }
     }
 
 
@@ -124,6 +139,20 @@ public class LoginActivity extends AppCompatActivity implements OnTaskCompleted 
         _loginButton.setEnabled(false);
         Intent chatIntent = new Intent(getBaseContext(), MainActivity.class);
         chatIntent.putExtra("token", Token);
+//        DatabaseHandler db = new DatabaseHandler(this);
+//        if(db.getUser(username) == null)
+//            db.addUser(new User(username, email, password, Token));
+//        else
+//            db.updateUserToken(new User(Token));
+//        Log.d("logged in: ", username);
+//        db.close();
+        User user = new User(username, email, password, Token);
+        SharedPreferences mPrefs = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
+        SharedPreferences.Editor prefsEditor = mPrefs.edit();
+        Gson gson = new Gson();
+        String json = gson.toJson(user);
+        prefsEditor.putString("user", json);
+        prefsEditor.apply();
         setResult(RESULT_OK, chatIntent);
         finish();
     }
@@ -132,7 +161,7 @@ public class LoginActivity extends AppCompatActivity implements OnTaskCompleted 
         String toastText;
         if (serverStatus == null) {
             toastText = "Enter a valid data";
-        } else if (serverStatus != null && serverStatus.equals("bad input")) {
+        } else if (serverStatus.equals("bad input")) {
             toastText = "Bad Login Credentials";
             if (retrievedUsername != null && retrievedUsername.equals("This username is not valid.")) {
                 _username.setError("Username doesn't exist");
