@@ -106,6 +106,7 @@
     <orderEntry type="library" exported="" name="support-vector-drawable-24.1.1" level="project" />
     <orderEntry type="library" exported="" name="topsnackbar-1.1.1" level="project" />
     <orderEntry type="library" exported="" name="design-24.1.1" level="project" />
+    <orderEntry type="library" exported="" name="circleimageview-1.2.1" level="project" />
     <orderEntry type="library" exported="" name="chat-ui-0.1.1" level="project" />
     <orderEntry type="library" exported="" name="android-android-25" level="project" />
   </component>

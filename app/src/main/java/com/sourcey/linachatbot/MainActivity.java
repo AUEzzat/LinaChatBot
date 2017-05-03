@@ -1,5 +1,8 @@
 package com.sourcey.linachatbot;
 
+import android.app.AlarmManager;
+import android.app.PendingIntent;
+import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
@@ -8,11 +11,15 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.support.design.widget.NavigationView;
+import android.support.v4.view.GravityCompat;
+import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.TextView;
 
 import com.androidadvance.topsnackbar.TSnackbar;
 import com.google.gson.Gson;
@@ -38,15 +45,26 @@ import java.util.Collections;
 
 import javax.net.ssl.SSLContext;
 
+import butterknife.Bind;
+import butterknife.ButterKnife;
 import co.intentservice.chatui.ChatView;
 import co.intentservice.chatui.models.ChatMessage;
 
 public class MainActivity extends AppCompatActivity implements OnTaskCompleted, NetworkStateReceiverListener {
+    @Bind(R.id.main_view)
+    DrawerLayout mDrawer;
+    @Bind(R.id.nav_view)
+    NavigationView navDrawer;
+    @Bind(R.id.chat_view)
+    ChatView chatView;
+
     private static final int REQUEST_AUTHENTICATION = 0;
-    private ChatView chatView;
+
     private getResponse getResponse;
     private String token;
     private TSnackbar snackbar;
+    private MenuItem characterType;
+
 
     @Override
     public void onSaveInstanceState(Bundle outState) {
@@ -84,7 +102,7 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
 
     @Override
     public void networkAvailable() {
-        if(snackbar != null)
+        if (snackbar != null)
             snackbar.dismiss();
         setGetResponse(token);
     }
@@ -96,7 +114,8 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
             @Override
             public void onClick(View v) {
             }
-        }).setActionTextColor(Color.WHITE);;
+        }).setActionTextColor(Color.WHITE);
+        ;
         View snackbarView = snackbar.getView();
         snackbarView.setBackgroundColor(Color.parseColor("#FF8A80"));
         snackbar.show();
@@ -106,25 +125,28 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        chatView = (ChatView) findViewById(R.id.chat_view);
+        ButterKnife.bind(this);
         NetworkStateReceiver networkStateReceiver = new NetworkStateReceiver();
         networkStateReceiver.addListener(this);
         this.registerReceiver(networkStateReceiver, new IntentFilter(android.net.ConnectivityManager.CONNECTIVITY_ACTION));
+        setupDrawerContent(navDrawer);
+        navDrawer.setCheckedItem(R.id.ic_one);
         SharedPreferences mPrefs = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
         Gson gson = new Gson();
         String json = mPrefs.getString("user", "");
-        if(!json.equals("")) {
+        if (!json.equals("")) {
             User user = gson.fromJson(json, User.class);
             double timeDifference = (System.nanoTime() - user.getTokenTime()) / 1e9;
-            if(timeDifference < 86400) {
+            if (timeDifference < 86400) {
                 this.token = user.getToken();
                 getOldMessages getOldMessages = new getOldMessages();
-                getOldMessages.execute("jwt "+this.token, "10");
+                getOldMessages.execute("jwt " + this.token, "10");
                 setGetResponse(this.token);
                 sendButton(this.token);
+                return;
             }
-            return;
         }
+
         Intent intent = new Intent(this, LoginActivity.class);
         startActivityForResult(intent, 0);
     }
@@ -170,25 +192,56 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_main, menu);
+
+        characterType = menu.findItem(R.id.my_activity);
         return true;
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            Intent intent = new Intent(this, LoginActivity.class);
-            startActivityForResult(intent, 0);
+        if (item.getItemId() == R.id.my_activity) {
+            if (mDrawer.isDrawerOpen(GravityCompat.END)) {
+                mDrawer.closeDrawer(GravityCompat.END);
+            } else {
+                mDrawer.openDrawer(GravityCompat.END);
+            }
             return true;
         }
-
         return super.onOptionsItemSelected(item);
     }
+
+    public void clearPref() {
+        SharedPreferences mPrefs = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
+        SharedPreferences.Editor prefsEditor = mPrefs.edit();
+        prefsEditor.clear();
+        prefsEditor.commit();
+    }
+
+    private void setupDrawerContent(final NavigationView navigationView) {
+        navigationView.setNavigationItemSelectedListener(
+                new NavigationView.OnNavigationItemSelectedListener() {
+                    @Override
+                    public boolean onNavigationItemSelected(MenuItem menuItem) {
+                        if(menuItem.getItemId() == R.id.action_logout) {
+                            clearPref();
+                            Intent mStartActivity = new Intent(getBaseContext(), MainActivity.class);
+                            int mPendingIntentId = 123456;
+                            PendingIntent mPendingIntent = PendingIntent.getActivity(getBaseContext(), mPendingIntentId,    mStartActivity, PendingIntent.FLAG_CANCEL_CURRENT);
+                            AlarmManager mgr = (AlarmManager)getBaseContext().getSystemService(Context.ALARM_SERVICE);
+                            mgr.set(AlarmManager.RTC, System.currentTimeMillis() + 100, mPendingIntent);
+                            System.exit(0);
+                        }
+                        characterType.setTitle(menuItem.getTitle());
+                        View header=navigationView.getHeaderView(0);
+                        TextView drawerHeader = (TextView)header.findViewById(R.id.drawer_header);
+                        drawerHeader.setText(menuItem.getTitle());
+                        menuItem.setChecked(true);
+                        mDrawer.closeDrawers();
+                        return true;
+                    }
+                });
+    }
+
 
     @Override
     public void onTaskCompleted(DefaultHashMap<String, String> data) {

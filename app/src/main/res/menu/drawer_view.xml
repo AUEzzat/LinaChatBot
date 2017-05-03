@@ -1,0 +1,63 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <group
+        android:id="@+id/menu_top"
+        android:checkableBehavior="single">
+        <item
+            android:id="@+id/ic_one"
+            android:icon="@drawable/ic_one"
+            android:title="@string/ic_one" />
+        <item
+            android:id="@+id/ic_two"
+            android:icon="@drawable/ic_two"
+            android:title="@string/ic_two" />
+        <item
+            android:id="@+id/ic_three"
+            android:icon="@drawable/ic_three"
+            android:title="@string/ic_three" />
+        <item
+            android:id="@+id/ic_four"
+            android:icon="@drawable/ic_four"
+            android:title="@string/ic_four" />
+        <item
+            android:id="@+id/ic_five"
+            android:icon="@drawable/ic_five"
+            android:title="@string/ic_five" />
+        <item
+            android:id="@+id/ic_six"
+            android:icon="@drawable/ic_six"
+            android:title="@string/ic_seven" />
+
+        <item
+            android:id="@+id/ic_seven"
+            android:icon="@drawable/ic_seven"
+            android:title="@string/ic_seven" />
+        <item
+            android:id="@+id/ic_eight"
+            android:icon="@drawable/ic_eight"
+            android:title="@string/ic_eight" />
+        <item
+            android:id="@+id/ic_nine"
+            android:icon="@drawable/ic_nine"
+            android:title="@string/ic_nine" />
+        <item
+            android:id="@+id/ic_ten"
+            android:icon="@drawable/ic_ten"
+            android:title="@string/ic_ten" />
+        <item
+            android:id="@+id/ic_eleven"
+            android:icon="@drawable/ic_eleven"
+            android:title="@string/ic_eleven" />
+        <item
+            android:id="@+id/ic_twelve"
+            android:icon="@drawable/ic_twelve"
+            android:title="@string/ic_twelve" />
+    </group>
+    <group
+        android:id="@+id/menu_bottom"
+        android:checkableBehavior="none">
+        <item
+            android:id="@+id/action_logout"
+            android:icon="@drawable/ic_logout"
+            android:title="@string/action_logout" />
+    </group>
+</menu>

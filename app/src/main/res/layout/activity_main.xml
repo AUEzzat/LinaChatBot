@@ -1,14 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<android.support.v4.widget.DrawerLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:chatview="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-
     style="@style/AppTheme.Dark"
     android:id="@+id/main_view"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:gravity="center_horizontal"
-    android:orientation="vertical"
     tools:context="com.sourcey.linachatbot.MainActivity">
 
     <co.intentservice.chatui.ChatView
@@ -20,6 +18,15 @@
         chatview:bubbleBackgroundRcv="@color/primary"
         chatview:bubbleBackgroundSend="@color/white"
         chatview:sendBtnBackgroundTint="@color/primary"/>
+    <!-- The navigation drawer that comes from the right -->
+    <!-- Note that `android:layout_gravity` needs to be set to 'end' -->
+    <android.support.design.widget.NavigationView
+        android:id="@+id/nav_view"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:layout_gravity="end"
+        android:fitsSystemWindows="true"
+        app:menu="@menu/drawer_view"
+        app:headerLayout="@layout/nav_header" />
 
-
-</LinearLayout>
+</android.support.v4.widget.DrawerLayout>

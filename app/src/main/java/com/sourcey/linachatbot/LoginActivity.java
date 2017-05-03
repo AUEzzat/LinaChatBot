@@ -24,10 +24,8 @@ public class LoginActivity extends AppCompatActivity implements OnTaskCompleted 
     private static final String TAG = "LoginActivity";
     private static final int REQUEST_SIGNUP = 0;
 
-    @Bind(R.id.input_username)
-    EditText _username;
-    @Bind(R.id.input_email)
-    EditText _emailText;
+    @Bind(R.id.input_user_or_email)
+    EditText _username_or_email;
     @Bind(R.id.input_password)
     EditText _passwordText;
     @Bind(R.id.btn_login)
@@ -35,6 +33,7 @@ public class LoginActivity extends AppCompatActivity implements OnTaskCompleted 
     @Bind(R.id.link_signup)
     TextView _signupLink;
 
+    private String usernameOrEmail;
     private String username;
     private String email;
     private String password;
@@ -83,15 +82,12 @@ public class LoginActivity extends AppCompatActivity implements OnTaskCompleted 
             }
         });
 
-        SharedPreferences mPrefs = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
-        Gson gson = new Gson();
-        String json = mPrefs.getString("user", "");
-        if(!json.equals("")) {
-            User user = gson.fromJson(json, User.class);
-            _username.setText(user.getUserName());
-            _emailText.setText(user.getEmail());
+        User user = getUserState();
+        if (user != null) {
+            _username_or_email.setText(user.getuserNameOrEmail());
             _passwordText.setText(user.getPassword());
         }
+
     }
 
 
@@ -102,7 +98,6 @@ public class LoginActivity extends AppCompatActivity implements OnTaskCompleted 
             onLoginFailed();
             return;
         }
-
         // authentication logic.
         getToken getToken = new getToken(null, null, null, LoginActivity.this);
         getToken.setType(0);
@@ -122,8 +117,7 @@ public class LoginActivity extends AppCompatActivity implements OnTaskCompleted 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (requestCode == REQUEST_SIGNUP && resultCode == RESULT_OK && data != null) {
-            _username.setText(data.getStringExtra("username"));
-            _emailText.setText(data.getStringExtra("email"));
+            _username_or_email.setText(data.getStringExtra("username_or_email"));
             _passwordText.setText(data.getStringExtra("password"));
             login();
         }
@@ -146,15 +140,30 @@ public class LoginActivity extends AppCompatActivity implements OnTaskCompleted 
 //            db.updateUserToken(new User(Token));
 //        Log.d("logged in: ", username);
 //        db.close();
-        User user = new User(username, email, password, Token);
+        User user = new User(usernameOrEmail, password, Token);
+        saveUserState(user);
+        setResult(RESULT_OK, chatIntent);
+        finish();
+    }
+
+    public User getUserState() {
+        SharedPreferences mPrefs = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
+        Gson gson = new Gson();
+        String json = mPrefs.getString("user", "");
+        if (!json.equals("")) {
+            User user = gson.fromJson(json, User.class);
+            return user;
+        }
+        return null;
+    }
+
+    public void saveUserState(User user) {
         SharedPreferences mPrefs = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
         SharedPreferences.Editor prefsEditor = mPrefs.edit();
         Gson gson = new Gson();
         String json = gson.toJson(user);
         prefsEditor.putString("user", json);
-        prefsEditor.apply();
-        setResult(RESULT_OK, chatIntent);
-        finish();
+        prefsEditor.commit();
     }
 
     public void onLoginFailed() {
@@ -164,11 +173,11 @@ public class LoginActivity extends AppCompatActivity implements OnTaskCompleted 
         } else if (serverStatus.equals("bad input")) {
             toastText = "Bad Login Credentials";
             if (retrievedUsername != null && retrievedUsername.equals("This username is not valid.")) {
-                _username.setError("Username doesn't exist");
+                _username_or_email.setError("Username doesn't exist");
                 toastText = "Username doesn't exist";
             }
-            if (retrievedEmail != null && retrievedEmail.equals("This email is not valid.")) {
-                _emailText.setError("Email doesn't exist");
+            if (retrievedEmail != null && (retrievedEmail.equals("This email is not valid.") || retrievedEmail.equals("Enter a valid email address."))) {
+                _username_or_email.setError("Email doesn't exist");
                 toastText = "Email doesn't exist";
             }
             if (retrievedPassword != null && retrievedPassword.equals("Incorrect credentials please try again")) {
@@ -178,6 +187,11 @@ public class LoginActivity extends AppCompatActivity implements OnTaskCompleted 
         } else {
             toastText = "Couldn't reach server";
         }
+//        User user = getUserState();
+//        if(user != null) {
+//            user.loggedIn = false;
+//            saveUserState(user);
+//        }
         new CustomToast(getBaseContext(), toastText, false);
         _loginButton.setEnabled(true);
     }
@@ -185,24 +199,18 @@ public class LoginActivity extends AppCompatActivity implements OnTaskCompleted 
     public boolean validate() {
         boolean valid = true;
 
-        username = _username.getText().toString();
-        email = _emailText.getText().toString();
+        usernameOrEmail = _username_or_email.getText().toString();
         password = _passwordText.getText().toString();
 
-        if (username.isEmpty() || !Pattern.compile("^[a-z0-9_-]{3,15}$").matcher(username).matches()) {
-            _username.setError("enter a valid username");
-            valid = false;
-        } else {
-            _username.setError(null);
+        if (!usernameOrEmail.isEmpty() && android.util.Patterns.EMAIL_ADDRESS.matcher(usernameOrEmail).matches()) {
+            email = usernameOrEmail;
         }
-        if (email.isEmpty() || !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-            _emailText.setError("enter a valid email address");
-            valid = false;
-        } else {
-            _emailText.setError(null);
+        else if (!usernameOrEmail.isEmpty() && Pattern.compile("^[a-z0-9_-]{3,15}$").matcher(usernameOrEmail).matches()) {
+            username = usernameOrEmail;
         }
-        if (_username.getError() == null || _emailText.getError() == null) {
-            valid = true;
+        else {
+            _username_or_email.setError("enter a valid username or a valid email");
+            valid = false;
         }
         if (password.isEmpty() || password.length() < 4 || password.length() > 10) {
             _passwordText.setError("between 4 and 10 alphanumeric characters");

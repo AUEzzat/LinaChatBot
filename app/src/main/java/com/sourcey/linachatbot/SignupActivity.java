@@ -121,7 +121,7 @@ public class SignupActivity extends AppCompatActivity implements OnTaskCompleted
         String toastText;
         if (serverStatus == null) {
             toastText = "Enter a valid data";
-        } else if (serverStatus != null && serverStatus.equals("bad input")) {
+        } else if (serverStatus.equals("bad input")) {
             toastText = "User already exists";
             if (retrievedUsername != null && retrievedUsername.equals("A user with that username already exists.")) {
                 _username.setError("Username already exists choose another username or login");

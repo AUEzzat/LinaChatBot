@@ -5,23 +5,19 @@ package com.sourcey.linachatbot;
  */
 
 public class User {
-    private String userName;
-    private String email;
+    private String usernameOrEmail;
     private String password;
     private String token;
     private long tokenTime;
 
-
-
-
     public User() {
+        this.tokenTime = System.nanoTime();
 
     }
 
-    public User(String userName, String email, String password, String token) {
-        this.userName = userName;
+    public User(String usernameOrEmail, String password, String token) {
+        this.usernameOrEmail = usernameOrEmail;
         this.password = password;
-        this.email = email;
         this.token = token;
         this.tokenTime = System.nanoTime();
     }
@@ -39,30 +35,24 @@ public class User {
         this.tokenTime = System.nanoTime();
     }
 
-    public String getUserName() {
+    public String getuserNameOrEmail() {
 
-        return userName;
+        return usernameOrEmail;
     }
 
-    public void setUserName(String userName) {
-        this.userName = userName;
+    public void setuserNameOrEmail(String userNameOrEmail) {
+        this.usernameOrEmail = userNameOrEmail;
     }
 
     public void setPassword(String password) {
         this.password = password;
     }
 
-    public void setEmail(String email) {
-        this.email = email;
-    }
 
     public String getPassword() {
         return password;
     }
 
-    public String getEmail() {
-        return email;
-    }
 
 
 }
