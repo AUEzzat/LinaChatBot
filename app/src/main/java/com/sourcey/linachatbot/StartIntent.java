@@ -36,7 +36,7 @@ public class StartIntent {
                 break;
             case "view_last_alarm":
                 String nextAlarm = Settings.System.getString(context.getContentResolver(), Settings.System.NEXT_ALARM_FORMATTED);
-            case "call":
+            case "call_number":
                 intent = new Intent(Intent.ACTION_CALL, Uri.parse("tel:" + data.get("number")));
                 if (ActivityCompat.checkSelfPermission(context, Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
                     Log.d(LOG_TAG, "Call Permission Not Granted");

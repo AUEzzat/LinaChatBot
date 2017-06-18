@@ -230,18 +230,18 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
                 new NavigationView.OnNavigationItemSelectedListener() {
                     @Override
                     public boolean onNavigationItemSelected(MenuItem menuItem) {
-                        if(menuItem.getItemId() == R.id.action_logout) {
+                        if (menuItem.getItemId() == R.id.action_logout) {
                             clearPref();
                             Intent mStartActivity = new Intent(getBaseContext(), MainActivity.class);
                             int mPendingIntentId = 123456;
-                            PendingIntent mPendingIntent = PendingIntent.getActivity(getBaseContext(), mPendingIntentId,    mStartActivity, PendingIntent.FLAG_CANCEL_CURRENT);
-                            AlarmManager mgr = (AlarmManager)getBaseContext().getSystemService(Context.ALARM_SERVICE);
+                            PendingIntent mPendingIntent = PendingIntent.getActivity(getBaseContext(), mPendingIntentId, mStartActivity, PendingIntent.FLAG_CANCEL_CURRENT);
+                            AlarmManager mgr = (AlarmManager) getBaseContext().getSystemService(Context.ALARM_SERVICE);
                             mgr.set(AlarmManager.RTC, System.currentTimeMillis() + 100, mPendingIntent);
                             System.exit(0);
                         }
                         characterType.setTitle(menuItem.getTitle());
-                        View header=navigationView.getHeaderView(0);
-                        TextView drawerHeader = (TextView)header.findViewById(R.id.drawer_header);
+                        View header = navigationView.getHeaderView(0);
+                        TextView drawerHeader = (TextView) header.findViewById(R.id.drawer_header);
                         drawerHeader.setText(menuItem.getTitle());
                         character = characterNumber.get(menuItem.getTitle().toString());
                         menuItem.setChecked(true);
@@ -254,15 +254,20 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
 
     @Override
     public void onTaskCompleted(DefaultHashMap<String, String> data) {
-        String messageText = data.get("message");
-        Long formattedTime = Long.parseLong(data.get("formattedTime"));
-        final ChatMessage message = new ChatMessage(messageText, formattedTime, ChatMessage.Type.RECEIVED);
-        runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                chatView.addMessage(message);
-            }
-        });
+        String type = data.get("type");
+        if (type.equals("message")) {
+            String messageText = data.get("message");
+            Long formattedTime = Long.parseLong(data.get("formattedTime"));
+            final ChatMessage message = new ChatMessage(messageText, formattedTime, ChatMessage.Type.RECEIVED);
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    chatView.addMessage(message);
+                }
+            });
+        } else if (type.equals("intent")) {
+            new StartIntent(getBaseContext(), data);
+        }
     }
 
     public class getOldMessages extends AsyncTask<String, Void, ArrayList<ChatMessage>> {

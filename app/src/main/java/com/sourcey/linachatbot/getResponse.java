@@ -7,6 +7,7 @@ import org.java_websocket.client.DefaultSSLWebSocketClientFactory;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.drafts.Draft;
 import org.java_websocket.handshake.ServerHandshake;
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -61,14 +62,23 @@ public class getResponse extends WebSocketClient {
         JSONObject replyJSON;
         try {
             replyJSON = new JSONObject(message);
-            String replyMsg = replyJSON.getString("msg");
+
             String owner = replyJSON.getString("owner");
-            String messageTime = replyJSON.getString("formated_timestamp");
-            DefaultHashMap<String, String> data = new DefaultHashMap<>("");
-            data.put("type", "getResponse");
-            data.put("formattedTime",messageTime);
-            data.put("message", replyMsg);
-            if(owner.equals("bot")) {
+            if (owner.equals("bot")) {
+                String type = replyJSON.getString("type");
+                String replyMsg = replyJSON.getString("msg");
+                String messageTime = replyJSON.getString("formated_timestamp");
+                DefaultHashMap<String, String> data = new DefaultHashMap<>("");
+                if (type.equals("intent")) {
+                    JSONArray intentData = replyJSON.getJSONArray("intent_data");
+                    for(int i=0;i<intentData.length();i+=2){
+                        data.put(intentData.getString(i), intentData.getString(i+1));
+                    }
+                }
+                data.put("type", type);
+                data.put("formattedTime", messageTime);
+                data.put("message", replyMsg);
+
                 listener.onTaskCompleted(data);
             }
         } catch (JSONException e) {
@@ -84,9 +94,9 @@ public class getResponse extends WebSocketClient {
                 new CustomToast(activity, "Disconnected", true);
             }
         });
-        Log.i(LOG_TAG, "Connection closed by " + (remote ? "remote peer" : "us")  + " with code " + code);
+        Log.i(LOG_TAG, "Connection closed by " + (remote ? "remote peer" : "us") + " with code " + code);
         open = false;
-        if(serverUri != null){
+        if (serverUri != null) {
             getResponse response = new getResponse(serverUri, listener, activity);
             if (serverUri.toString().indexOf("wss") == 0) {
                 try {
