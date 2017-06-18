@@ -56,6 +56,7 @@ public class StartIntent {
                 intent = new Intent(Intent.ACTION_CALL, Uri.parse("tel:" + data.get("number")));
                 if (ActivityCompat.checkSelfPermission(context, Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
                     Log.d(LOG_TAG, "Call Permission Not Granted");
+                    message = "Call Permission Not Granted";
                     return;
                 }
                 break;
@@ -105,6 +106,7 @@ public class StartIntent {
                 if (data.get("name").equals("call_contact")) {
                     intent = new Intent(Intent.ACTION_CALL, Uri.parse("tel:" + phoneNumber));
                     if (ActivityCompat.checkSelfPermission(context, Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
+                        message = "Call Permission Not Granted";
                         Log.d(LOG_TAG, "Call Permission Not Granted");
                         return;
                     }
