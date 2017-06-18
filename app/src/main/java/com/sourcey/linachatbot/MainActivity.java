@@ -255,9 +255,9 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
     @Override
     public void onTaskCompleted(DefaultHashMap<String, String> data) {
         String type = data.get("type");
+        Long formattedTime = Long.parseLong(data.get("formattedTime"));
         if (type.equals("message")) {
             String messageText = data.get("message");
-            Long formattedTime = Long.parseLong(data.get("formattedTime"));
             final ChatMessage message = new ChatMessage(messageText, formattedTime, ChatMessage.Type.RECEIVED);
             runOnUiThread(new Runnable() {
                 @Override
@@ -266,7 +266,7 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
                 }
             });
         } else if (type.equals("intent")) {
-            new StartIntent(getBaseContext(), data);
+            new StartIntent(getBaseContext(), data,this);
         }
     }
 
