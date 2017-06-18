@@ -27,10 +27,10 @@ public class StartIntent {
 
     StartIntent(Context context, DefaultHashMap<String, String> data) {
         Intent intent = null;
-        switch (data.get("type")) {
+        switch (data.get("name")) {
             case "set_alarm":
                 intent = new Intent(AlarmClock.ACTION_SET_ALARM)
-                        .putExtra(AlarmClock.EXTRA_MESSAGE, data.get("name"))
+                        .putExtra(AlarmClock.EXTRA_MESSAGE, data.get("title"))
                         .putExtra(AlarmClock.EXTRA_HOUR, Integer.parseInt(data.get("hour")))
                         .putExtra(AlarmClock.EXTRA_MINUTES, Integer.parseInt(data.get("minute")));
                 break;
@@ -77,7 +77,7 @@ public class StartIntent {
                         }
                     }
                 }
-                if(data.get("type").equals("call_contact")) {
+                if (data.get("type").equals("call_contact")) {
                     intent = new Intent(Intent.ACTION_CALL, Uri.parse("tel:" + phoneNumber));
                     if (ActivityCompat.checkSelfPermission(context, Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
                         Log.d(LOG_TAG, "Call Permission Not Granted");
@@ -89,20 +89,28 @@ public class StartIntent {
                 intent = new Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:"))
                         .putExtra(Intent.EXTRA_EMAIL, new String[]{data.get("email")})
                         .putExtra(Intent.EXTRA_SUBJECT, data.get("subject"))
-                        .putExtra(Intent.EXTRA_TEXT, data.get("message"));
+                        .putExtra(Intent.EXTRA_TEXT, data.get("text"));
                 break;
-            case "set event":
+            case "set_event":
                 String[] startStr = data.get("start_time").split(":");
                 ArrayList<Integer> startInt = new ArrayList<>();
-                for (String s : startStr) startInt.add(Integer.valueOf(s));
                 Calendar beginTime = Calendar.getInstance();
-                beginTime.set(startInt.get(0), startInt.get(1), startInt.get(2), startInt.get(3), startInt.get(4));
+                try {
+                    for (String s : startStr) startInt.add(Integer.valueOf(s));
+                    beginTime.set(startInt.get(0), startInt.get(1), startInt.get(2), startInt.get(3), startInt.get(4));
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
                 //set(year, month, day, hours, minutes)
-                String[] endStr = data.get("start_time").split(":");
+                String[] endStr = data.get("end_time").split(":");
                 ArrayList<Integer> endInt = new ArrayList<>();
-                for (String s : endStr) endInt.add(Integer.valueOf(s));
                 Calendar endTime = Calendar.getInstance();
-                endTime.set(endInt.get(0), endInt.get(1), endInt.get(2), endInt.get(3), endInt.get(4));
+                try {
+                    for (String s : endStr) endInt.add(Integer.valueOf(s));
+                    endTime.set(endInt.get(0), endInt.get(1), endInt.get(2), endInt.get(3), endInt.get(4));
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
                 intent = new Intent(Intent.ACTION_INSERT)
                         .setData(Events.CONTENT_URI)
                         .putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, beginTime.getTimeInMillis())

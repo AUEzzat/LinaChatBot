@@ -64,12 +64,18 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
     private String token;
     private TSnackbar snackbar;
     private MenuItem characterType;
+    private int character;
 
 
     @Override
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
         outState.putString("token", token);
+        outState.putInt("character", character);
+        SharedPreferences mPrefs = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
+        SharedPreferences.Editor prefsEditor = mPrefs.edit();
+        prefsEditor.putInt("character", character);
+        prefsEditor.commit();
     }
 
     private void sendButton(final String token) {
@@ -83,6 +89,7 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
                         messageJSON.put("command", "send");
                         messageJSON.put("message", ChatMessage.getMessage());
                         messageJSON.put("token", token);
+                        messageJSON.put("character", character);
                     } catch (JSONException e) {
                         e.printStackTrace();
                         new CustomToast(getBaseContext(), "failed to send message", true);
@@ -130,8 +137,9 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
         networkStateReceiver.addListener(this);
         this.registerReceiver(networkStateReceiver, new IntentFilter(android.net.ConnectivityManager.CONNECTIVITY_ACTION));
         setupDrawerContent(navDrawer);
-        navDrawer.setCheckedItem(R.id.ic_one);
         SharedPreferences mPrefs = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
+        character = mPrefs.getInt("character", 0);
+        navDrawer.setCheckedItem(characterNumber.getID(character));
         Gson gson = new Gson();
         String json = mPrefs.getString("user", "");
         if (!json.equals("")) {
@@ -235,6 +243,7 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
                         View header=navigationView.getHeaderView(0);
                         TextView drawerHeader = (TextView)header.findViewById(R.id.drawer_header);
                         drawerHeader.setText(menuItem.getTitle());
+                        character = characterNumber.get(menuItem.getTitle().toString());
                         menuItem.setChecked(true);
                         mDrawer.closeDrawers();
                         return true;
