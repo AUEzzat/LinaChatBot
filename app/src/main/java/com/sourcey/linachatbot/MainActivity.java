@@ -10,6 +10,7 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.preference.PreferenceManager;
 import android.support.design.widget.NavigationView;
 import android.support.v4.view.GravityCompat;
@@ -42,6 +43,7 @@ import java.security.NoSuchAlgorithmException;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Locale;
 
 import javax.net.ssl.SSLContext;
 
@@ -78,30 +80,37 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
         prefsEditor.commit();
     }
 
+    private boolean sendMessageHelper(String token, String command, String message, String id) {
+        if (getResponse != null && getResponse.open) {
+            JSONObject messageJSON = new JSONObject();
+            try {
+                messageJSON.put("command", command);
+                messageJSON.put("message", message);
+                messageJSON.put("token", token);
+                messageJSON.put("character", character);
+                if (!id.equals("")) {
+                    messageJSON.put("msg_id", id);
+                }
+            } catch (JSONException e) {
+                e.printStackTrace();
+                new CustomToast(getBaseContext(), "failed to send message", true);
+                return false;
+            }
+            getResponse.send(messageJSON.toString());
+            return true;
+        } else {
+            setGetResponse(token);
+            new CustomToast(getBaseContext(), "failed to send message", true);
+            return false;
+        }
+    }
+
     private void sendButton(final String token) {
         chatView.setOnSentMessageListener(new ChatView.OnSentMessageListener() {
 
             @Override
             public boolean sendMessage(ChatMessage ChatMessage) {
-                if (getResponse != null && getResponse.open) {
-                    JSONObject messageJSON = new JSONObject();
-                    try {
-                        messageJSON.put("command", "send");
-                        messageJSON.put("message", ChatMessage.getMessage());
-                        messageJSON.put("token", token);
-                        messageJSON.put("character", character);
-                    } catch (JSONException e) {
-                        e.printStackTrace();
-                        new CustomToast(getBaseContext(), "failed to send message", true);
-                        return false;
-                    }
-                    getResponse.send(messageJSON.toString());
-                    return true;
-                } else {
-                    setGetResponse(token);
-                    new CustomToast(getBaseContext(), "failed to send message", true);
-                    return false;
-                }
+                return sendMessageHelper(token, "send", ChatMessage.getMessage(), "");
             }
         });
     }
@@ -116,7 +125,7 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
 
     @Override
     public void networkUnavailable() {
-        snackbar = TSnackbar.make(findViewById(R.id.main_view), "Not Connected", TSnackbar.LENGTH_INDEFINITE);
+        snackbar = TSnackbar.make(mDrawer, "Not Connected", TSnackbar.LENGTH_INDEFINITE);
         snackbar.setAction("Dismiss", new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -133,6 +142,13 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         ButterKnife.bind(this);
+
+        DefaultHashMap<String, String> hmap = new DefaultHashMap<>("");
+        hmap.put("name", "start_timer");
+        hmap.put("minute", "3");
+        hmap.put("second", "0");
+        new StartIntent(getBaseContext(), hmap, this);
+
         NetworkStateReceiver networkStateReceiver = new NetworkStateReceiver();
         networkStateReceiver.addListener(this);
         this.registerReceiver(networkStateReceiver, new IntentFilter(android.net.ConnectivityManager.CONNECTIVITY_ACTION));
@@ -251,13 +267,65 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
                 });
     }
 
+    private void setTimer(int minute, int second, final String id) {
+        final String message = String.format("%s:%s", minute, second);
+        final TSnackbar timerBar = TSnackbar.make(
+                mDrawer,
+                message,
+                TSnackbar.LENGTH_INDEFINITE);
+        final CountDownTimer timer = new CountDownTimer(minute * 60000 + second * 1000, 1000) {
+
+            public void onTick(long millisUntilFinished) {
+                timerBar.setText(String.format(Locale.UK, "Remaining time %s:%02d", (int)millisUntilFinished / 60000,
+                        millisUntilFinished % 60000 / 1000 ));
+            }
+
+            public void onFinish() {
+                timerBar.setText("Done!");
+                timerBar.dismiss();
+                String messageText = String.format("%s/nTimer stopped", message);
+                final ChatMessage message = new ChatMessage("Timer stopped", System.currentTimeMillis(), ChatMessage.Type.RECEIVED);
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        chatView.addMessage(message);
+                    }
+                });
+                sendMessageHelper(token, "history", messageText, id);
+            }
+
+        };
+        timer.start();
+
+        timerBar.setAction("Stop", new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                timer.onFinish();
+            }
+        }).setActionTextColor(Color.WHITE);
+        View timerBarView = timerBar.getView();
+        timerBarView.setBackgroundColor(Color.parseColor("#ce0e0e"));
+        timerBar.show();
+    }
 
     @Override
     public void onTaskCompleted(DefaultHashMap<String, String> data) {
         String type = data.get("type");
-        Long formattedTime = Long.parseLong(data.get("formattedTime"));
+        Long formattedTime;
+        try {
+            formattedTime = Long.parseLong(data.get("formattedTime"));
+        } catch (Exception e) {
+            formattedTime = System.currentTimeMillis();
+        }
         if (type.equals("message")) {
             String messageText = data.get("message");
+            String id = data.get("id");
+            if (data.get("name").equals("start_timer")) {
+                setTimer(Integer.parseInt(data.get("minute")), Integer.parseInt(data.get("second")), id);
+            }
+            else if (!id.equals("")) {
+                sendMessageHelper(token, "history", messageText, id);
+            }
             final ChatMessage message = new ChatMessage(messageText, formattedTime, ChatMessage.Type.RECEIVED);
             runOnUiThread(new Runnable() {
                 @Override
@@ -266,7 +334,7 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
                 }
             });
         } else if (type.equals("intent")) {
-            new StartIntent(getBaseContext(), data,this);
+            new StartIntent(getBaseContext(), data, this);
         }
     }
 
@@ -275,6 +343,7 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
         private final String LOG_TAG = getOldMessages.class.getSimpleName();
 
         private ArrayList<ChatMessage> getOldMessagesFromJson(String oldMessagesJsonStr) throws JSONException, IOException, ParseException {
+
             JSONObject oldMessagesJsonObj = new JSONObject(oldMessagesJsonStr);
             JSONArray oldMessagesJsonArray = oldMessagesJsonObj.getJSONArray("results");
             ArrayList<ChatMessage> oldMessages = new ArrayList<>(oldMessagesJsonArray.length());
@@ -283,6 +352,9 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
                 JSONObject oldMessage = oldMessagesJsonArray.getJSONObject(i);
 
                 String messageText = oldMessage.getString("message");
+                if (messageText.equals("")) {
+                    continue;
+                }
                 String humanUser = oldMessage.getString("owner");
                 Long messageTime = Long.parseLong(oldMessage.getString("formated_timestamp"));
                 ChatMessage.Type messageType = ChatMessage.Type.RECEIVED;

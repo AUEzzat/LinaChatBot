@@ -62,12 +62,12 @@ public class getResponse extends WebSocketClient {
         JSONObject replyJSON;
         try {
             replyJSON = new JSONObject(message);
-
             String owner = replyJSON.getString("owner");
             if (owner.equals("bot")) {
                 String type = replyJSON.getString("type");
                 String replyMsg = replyJSON.getString("msg");
                 String messageTime = replyJSON.getString("formated_timestamp");
+                String messageID = replyJSON.getString("msg_id");
                 DefaultHashMap<String, String> data = new DefaultHashMap<>("");
                 if (type.equals("intent")) {
                     JSONArray intentData = replyJSON.getJSONArray("intent_data");
@@ -78,6 +78,7 @@ public class getResponse extends WebSocketClient {
                 data.put("type", type);
                 data.put("formattedTime", messageTime);
                 data.put("message", replyMsg);
+                data.put("id", messageID);
 
                 listener.onTaskCompleted(data);
             }
