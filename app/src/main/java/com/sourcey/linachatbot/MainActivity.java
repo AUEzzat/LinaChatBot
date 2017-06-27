@@ -40,9 +40,11 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.security.NoSuchAlgorithmException;
+import java.text.DateFormat;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.Locale;
 
 import javax.net.ssl.SSLContext;
@@ -143,11 +145,11 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
         setContentView(R.layout.activity_main);
         ButterKnife.bind(this);
 
-        DefaultHashMap<String, String> hmap = new DefaultHashMap<>("");
-        hmap.put("name", "start_timer");
-        hmap.put("minute", "3");
-        hmap.put("second", "0");
-        new StartIntent(getBaseContext(), hmap, this);
+//        DefaultHashMap<String, String> hmap = new DefaultHashMap<>("");
+//        hmap.put("name", "start_timer");
+//        hmap.put("minute", "3");
+//        hmap.put("second", "0");
+//        new StartIntent(getBaseContext(), hmap, this);
 
         NetworkStateReceiver networkStateReceiver = new NetworkStateReceiver();
         networkStateReceiver.addListener(this);
@@ -267,12 +269,17 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
                 });
     }
 
-    private void setTimer(int minute, int second, final String id) {
-        final String message = String.format("%s:%s", minute, second);
+    private void setTimer(final int minute, final int second, final String id) {
+        final String message = String.format(Locale.UK, "Timer of %s:%02d started at %s", minute, second,
+                DateFormat.getTimeInstance().format(new Date()));
         final TSnackbar timerBar = TSnackbar.make(
                 mDrawer,
                 message,
                 TSnackbar.LENGTH_INDEFINITE);
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+
         final CountDownTimer timer = new CountDownTimer(minute * 60000 + second * 1000, 1000) {
 
             public void onTick(long millisUntilFinished) {
@@ -283,7 +290,7 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
             public void onFinish() {
                 timerBar.setText("Done!");
                 timerBar.dismiss();
-                String messageText = String.format("%s/nTimer stopped", message);
+                String messageText = String.format("%s\nTimer stopped", message);
                 final ChatMessage message = new ChatMessage("Timer stopped", System.currentTimeMillis(), ChatMessage.Type.RECEIVED);
                 runOnUiThread(new Runnable() {
                     @Override
@@ -306,6 +313,8 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
         View timerBarView = timerBar.getView();
         timerBarView.setBackgroundColor(Color.parseColor("#ce0e0e"));
         timerBar.show();
+            }
+        });
     }
 
     @Override
@@ -320,8 +329,8 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
         if (type.equals("message")) {
             String messageText = data.get("message");
             String id = data.get("id");
-            if (data.get("name").equals("start_timer")) {
-                setTimer(Integer.parseInt(data.get("minute")), Integer.parseInt(data.get("second")), id);
+            if (data.get("extra").equals("start_timer")) {
+                setTimer(Integer.parseInt(data.get("extra_minute")), Integer.parseInt(data.get("extra_second")), id);
             }
             else if (!id.equals("")) {
                 sendMessageHelper(token, "history", messageText, id);
@@ -334,7 +343,11 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
                 }
             });
         } else if (type.equals("intent")) {
-            new StartIntent(getBaseContext(), data, this);
+            try {
+                new StartIntent(getBaseContext(), data, this);
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
         }
     }
 

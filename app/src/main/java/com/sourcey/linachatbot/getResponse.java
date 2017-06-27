@@ -7,7 +7,6 @@ import org.java_websocket.client.DefaultSSLWebSocketClientFactory;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.drafts.Draft;
 import org.java_websocket.handshake.ServerHandshake;
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -68,12 +67,10 @@ public class getResponse extends WebSocketClient {
                 String replyMsg = replyJSON.getString("msg");
                 String messageTime = replyJSON.getString("formated_timestamp");
                 String messageID = replyJSON.getString("msg_id");
+                String intentData = replyJSON.getString("intent_data");
                 DefaultHashMap<String, String> data = new DefaultHashMap<>("");
                 if (type.equals("intent")) {
-                    JSONArray intentData = replyJSON.getJSONArray("intent_data");
-                    for(int i=0;i<intentData.length();i+=2){
-                        data.put(intentData.getString(i), intentData.getString(i+1));
-                    }
+                    data.put("intentData", intentData);
                 }
                 data.put("type", type);
                 data.put("formattedTime", messageTime);
