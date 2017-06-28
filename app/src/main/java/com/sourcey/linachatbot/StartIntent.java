@@ -22,6 +22,7 @@ import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 
 /**
@@ -37,6 +38,11 @@ public class StartIntent {
         Intent intent = null;
         String message = "";
         JSONArray intentJSONArray = new JSONArray(data.get("intentData"));
+        String noteTitle;
+        String noteText;
+        NotesDatabaseHandler noteData;
+        Note note;
+        int noteCount;
 
         for (int i = 0; i < intentJSONArray.length(); i++) {
             JSONArray currentJSONArray = intentJSONArray.getJSONArray(i);
@@ -218,7 +224,7 @@ public class StartIntent {
                     if (!location.equals("")) {
                         location = "at " + location;
                     }
-                    message += String.format("%s%n%s%nfrom %s%nto %s%n%s", title, currentIntentData.get("description"),
+                    message += String.format("%s\n%s\nfrom %s\nto %s\n%s", title, currentIntentData.get("description"),
                             beginTime.getTime(), endTime.getTime(), location);
                     break;
 
@@ -226,13 +232,116 @@ public class StartIntent {
                     String currentDateTimeString = DateFormat.getDateTimeInstance().format(new Date());
                     message += String.format("Current Date and Time is: %s", currentDateTimeString);
                     break;
+
                 case "show_date":
                     String currentDateString = DateFormat.getDateInstance().format(new Date());
                     message += String.format("Current Date is: %s", currentDateString);
                     break;
+
                 case "show_time":
                     String currentTimeString = DateFormat.getTimeInstance().format(new Date());
                     message += String.format("Current Time is: %s", currentTimeString);
+                    break;
+
+                case "save_note":
+                    noteTitle = currentIntentData.get("title");
+                    noteData = new NotesDatabaseHandler(context);
+                    note = noteData.getNote(noteTitle);
+                    if(note != null) {
+                        message += "note already exists\nuse edit note to edit text\nor choose another title";
+                    }
+                    else {
+                        noteText = currentIntentData.get("text");
+                        note = new Note(noteTitle, noteText);
+                        noteData.addNote(note);
+                        if (!noteText.equals("")) {
+                            noteTitle += ":\n";
+                        }
+                        message += String.format("%s%s saved", noteTitle, noteText);
+                    }
+                    break;
+
+                case "show_note":
+                    noteTitle = currentIntentData.get("title");
+                    noteData = new NotesDatabaseHandler(context);
+                    note = noteData.getNote(noteTitle);
+                    if(note == null) {
+                        message += String.format("%s note doesn't exist", noteTitle);
+                    }
+                    else {
+                        noteText = note.getText();
+                        if(!noteText.equals("")) {
+                            noteTitle += ":\n";
+                        }
+                        message += String.format("%s%s", noteTitle, noteText);
+                    }
+                    break;
+                case "edit_note":
+                    noteTitle = currentIntentData.get("title");
+                    noteData = new NotesDatabaseHandler(context);
+                    note = noteData.getNote(noteTitle);
+                    if(note == null) {
+                        message += String.format("%s note doesn't exist", noteTitle);
+                    }
+                    else {
+                        noteText = currentIntentData.get("text");
+                        note.setText(noteText);
+                        noteData.updateNoteText(note);
+                        noteTitle = noteTitle + " text updated to";
+                        if(!noteText.equals("")) {
+                            noteTitle += ":\n";
+                        }
+                        message += String.format("%s%s", noteTitle, noteText);
+                    }
+                    break;
+
+                case "delete_note":
+                    noteTitle = currentIntentData.get("title");
+                    noteData = new NotesDatabaseHandler(context);
+                    note = noteData.getNote(noteTitle);
+                    if(note == null) {
+                        message += String.format("%s note doesn't exist", noteTitle);
+                    }
+                    else {
+                        noteData.deleteNote(note);
+                        message += String.format("%s note deleted", noteTitle);
+                    }
+                    break;
+
+                case "show_last_note":
+                    noteData = new NotesDatabaseHandler(context);
+                    noteCount = noteData.getNotesCount();
+                    if(noteCount > 0) {
+                        note = noteData.getLastNote();
+                        noteTitle = note.getTitle();
+                        noteText = note.getText();
+                        if (!noteText.equals("")) {
+                            noteTitle += ":\n";
+                        }
+                        message += String.format("%s%s", noteTitle, noteText);
+                    }
+                    else {
+                        message += "you have no notes to show";
+                    }
+                    break;
+
+                case "show_all_notes":
+                    noteData = new NotesDatabaseHandler(context);
+                    noteCount = noteData.getNotesCount();
+                    if(noteCount > 0) {
+                        List<Note> notes = noteData.getAllNotes();
+                        for(Note currentNote:notes) {
+                            noteTitle = currentNote.getTitle();
+                            noteText = currentNote.getText();
+                            if (!noteText.equals("")) {
+                                noteTitle += ":\n";
+                            }
+                            message += String.format("%s%s\n", noteTitle, noteText);
+                        }
+                    }
+                    else {
+                        message += "you have no notes to show";
+                    }
                     break;
             }
             message = capitalizeFormat(message) + ".\n\n";
