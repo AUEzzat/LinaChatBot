@@ -69,6 +69,8 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
     private TSnackbar snackbar;
     private MenuItem characterType;
     private int character;
+    private boolean connected = false;
+    private boolean retrievedMessages = false;
 
 
     @Override
@@ -120,8 +122,14 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
 
     @Override
     public void networkAvailable() {
-        if (snackbar != null)
+        if(!retrievedMessages) {
+            getOldMessages getOldMessages = new getOldMessages();
+            getOldMessages.execute("jwt " + token, "10");
+        }
+        if (snackbar != null) {
             snackbar.dismiss();
+        }
+        connected = true;
         setGetResponse(token);
     }
 
@@ -133,7 +141,7 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
             public void onClick(View v) {
             }
         }).setActionTextColor(Color.WHITE);
-        ;
+        connected = false;
         View snackbarView = snackbar.getView();
         snackbarView.setBackgroundColor(Color.parseColor("#FF8A80"));
         snackbar.show();
@@ -332,7 +340,7 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
             if (data.get("extra").equals("start_timer")) {
                 setTimer(Integer.parseInt(data.get("extra_minute")), Integer.parseInt(data.get("extra_second")), id);
             }
-            else if (!id.equals("")) {
+            if (!id.equals("")) {
                 sendMessageHelper(token, "history", messageText, id);
             }
             final ChatMessage message = new ChatMessage(messageText, formattedTime, ChatMessage.Type.RECEIVED);
@@ -443,7 +451,20 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
         protected void onPostExecute(ArrayList<ChatMessage> oldMessages) {
             if (oldMessages != null) {
                 chatView.addMessages(oldMessages);
-            } else {
+            } else if(connected) {
+                retrievedMessages = true;
+                snackbar = TSnackbar.make(mDrawer, "Failed to retrieve old messages", TSnackbar.LENGTH_INDEFINITE);
+                snackbar.setAction("Retry", new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        getOldMessages getOldMessages = new getOldMessages();
+                        getOldMessages.execute("jwt " + token, "10");
+                    }
+                }).setActionTextColor(Color.WHITE);
+                View snackbarView = snackbar.getView();
+                snackbarView.setBackgroundColor(Color.parseColor("#FF8A80"));
+                snackbar.show();
+            }else {
                 new CustomToast(getBaseContext(), "failed to retrieve old messages", true);
             }
         }
