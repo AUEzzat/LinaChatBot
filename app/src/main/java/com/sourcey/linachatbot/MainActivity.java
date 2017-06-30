@@ -459,7 +459,6 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
 
         @Override
         protected void onPostExecute(ArrayList<ChatMessage> oldMessages) {
-            Log.v("ola", "ss");
             if (oldMessages != null) {
                 chatView.addMessages(oldMessages);
                 if (snackbar != null) {
