@@ -1,6 +1,7 @@
 package com.sourcey.linachatbot;
 
 import android.app.AlarmManager;
+import android.app.Dialog;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
@@ -20,6 +21,7 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.Window;
 import android.widget.TextView;
 
 import com.androidadvance.topsnackbar.TSnackbar;
@@ -122,7 +124,7 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
 
     @Override
     public void networkAvailable() {
-        if(!retrievedMessages) {
+        if (!retrievedMessages) {
             getOldMessages getOldMessages = new getOldMessages();
             getOldMessages.execute("jwt " + token, "10");
         }
@@ -158,6 +160,14 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
 //        hmap.put("minute", "3");
 //        hmap.put("second", "0");
 //        new StartIntent(getBaseContext(), hmap, this);
+        Dialog settingsDialog = new Dialog(this);
+        settingsDialog.getWindow().requestFeature(Window.FEATURE_NO_TITLE);
+        settingsDialog.setContentView(getLayoutInflater().inflate(R.layout.image_layout
+                , null));
+
+        settingsDialog.show();
+        settingsDialog.dismiss();
+
 
         NetworkStateReceiver networkStateReceiver = new NetworkStateReceiver();
         networkStateReceiver.addListener(this);
@@ -288,39 +298,39 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
             @Override
             public void run() {
 
-        final CountDownTimer timer = new CountDownTimer(minute * 60000 + second * 1000, 1000) {
+                final CountDownTimer timer = new CountDownTimer(minute * 60000 + second * 1000, 1000) {
 
-            public void onTick(long millisUntilFinished) {
-                timerBar.setText(String.format(Locale.UK, "Remaining time %s:%02d", (int)millisUntilFinished / 60000,
-                        millisUntilFinished % 60000 / 1000 ));
-            }
-
-            public void onFinish() {
-                timerBar.setText("Done!");
-                timerBar.dismiss();
-                String messageText = String.format("%s\nTimer stopped", message);
-                final ChatMessage message = new ChatMessage("Timer stopped", System.currentTimeMillis(), ChatMessage.Type.RECEIVED);
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        chatView.addMessage(message);
+                    public void onTick(long millisUntilFinished) {
+                        timerBar.setText(String.format(Locale.UK, "Remaining time %s:%02d", (int) millisUntilFinished / 60000,
+                                millisUntilFinished % 60000 / 1000));
                     }
-                });
-                sendMessageHelper(token, "history", messageText, id);
-            }
 
-        };
-        timer.start();
+                    public void onFinish() {
+                        timerBar.setText("Done!");
+                        timerBar.dismiss();
+                        String messageText = String.format("%s\nTimer stopped", message);
+                        final ChatMessage message = new ChatMessage("Timer stopped", System.currentTimeMillis(), ChatMessage.Type.RECEIVED);
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                chatView.addMessage(message);
+                            }
+                        });
+                        sendMessageHelper(token, "history", messageText, id);
+                    }
 
-        timerBar.setAction("Stop", new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                timer.onFinish();
-            }
-        }).setActionTextColor(Color.WHITE);
-        View timerBarView = timerBar.getView();
-        timerBarView.setBackgroundColor(Color.parseColor("#ce0e0e"));
-        timerBar.show();
+                };
+                timer.start();
+
+                timerBar.setAction("Stop", new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        timer.onFinish();
+                    }
+                }).setActionTextColor(Color.WHITE);
+                View timerBarView = timerBar.getView();
+                timerBarView.setBackgroundColor(Color.parseColor("#ce0e0e"));
+                timerBar.show();
             }
         });
     }
@@ -449,9 +459,13 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
 
         @Override
         protected void onPostExecute(ArrayList<ChatMessage> oldMessages) {
+            Log.v("ola", "ss");
             if (oldMessages != null) {
                 chatView.addMessages(oldMessages);
-            } else if(connected) {
+                if (snackbar != null) {
+                    snackbar.dismiss();
+                }
+            } else if (connected) {
                 retrievedMessages = true;
                 snackbar = TSnackbar.make(mDrawer, "Failed to retrieve old messages", TSnackbar.LENGTH_INDEFINITE);
                 snackbar.setAction("Retry", new View.OnClickListener() {
@@ -464,7 +478,7 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
                 View snackbarView = snackbar.getView();
                 snackbarView.setBackgroundColor(Color.parseColor("#FF8A80"));
                 snackbar.show();
-            }else {
+            } else {
                 new CustomToast(getBaseContext(), "failed to retrieve old messages", true);
             }
         }
