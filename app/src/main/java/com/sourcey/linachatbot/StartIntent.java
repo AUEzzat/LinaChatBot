@@ -177,16 +177,16 @@ public class StartIntent {
                     intent = new Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:"))
                             .putExtra(Intent.EXTRA_EMAIL, new String[]{currentIntentData.get("email")})
                             .putExtra(Intent.EXTRA_SUBJECT, currentIntentData.get("subject"))
-                            .putExtra(Intent.EXTRA_TEXT, currentIntentData.get("text"));
-                    String text = currentIntentData.get("text");
+                            .putExtra(Intent.EXTRA_TEXT, currentIntentData.get("body"));
+                    String body = currentIntentData.get("body");
                     String subject = currentIntentData.get("subject");
-                    if (text.equals("")) {
-                        text = "(empty)";
+                    if (body.equals("")) {
+                        body = "(empty)";
                     }
                     if (!subject.equals("")) {
                         subject = subject + ",";
                     }
-                    message += String.format("%s%n%s%n%nis sent to %s", subject, text, currentIntentData.get("email"));
+                    message += String.format("%s%n%s%n%nis sent to %s", subject, body, currentIntentData.get("email"));
                     break;
 
                 case "set_event":
@@ -195,7 +195,18 @@ public class StartIntent {
                     Calendar beginTime = Calendar.getInstance();
                     try {
                         for (String s : startStr) startInt.add(Integer.valueOf(s));
-                        beginTime.set(startInt.get(0), startInt.get(1), startInt.get(2), startInt.get(3), startInt.get(4));
+                        switch (startInt.size()) {
+                            case 5:
+                                beginTime.set(startInt.get(0), startInt.get(1), startInt.get(2), startInt.get(3), startInt.get(4));
+                                break;
+                            case 3:
+                                beginTime.set(startInt.get(0), startInt.get(1), startInt.get(2));
+                                break;
+                            case 2:
+                                beginTime.set(Calendar.HOUR_OF_DAY, startInt.get(0));
+                                beginTime.set(Calendar.MINUTE, startInt.get(1));
+                                break;
+                        }
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
@@ -205,7 +216,19 @@ public class StartIntent {
                     Calendar endTime = Calendar.getInstance();
                     try {
                         for (String s : endStr) endInt.add(Integer.valueOf(s));
-                        endTime.set(endInt.get(0), endInt.get(1), endInt.get(2), endInt.get(3), endInt.get(4));
+                        switch (endInt.size()) {
+                            case 5:
+                                endTime.set(endInt.get(0), endInt.get(1), endInt.get(2), endInt.get(3), endInt.get(4));
+                                break;
+                            case 3:
+                                endTime.set(endInt.get(0), endInt.get(1), endInt.get(2));
+                                break;
+                            case 2:
+                                endTime.set(Calendar.HOUR_OF_DAY, endInt.get(0));
+                                endTime.set(Calendar.MINUTE, endInt.get(1));
+                                break;
+                        }
+
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
@@ -224,7 +247,7 @@ public class StartIntent {
                     if (!location.equals("")) {
                         location = "at " + location;
                     }
-                    message += String.format("%s\n%s\nfrom %s\nto %s\n%s", title, currentIntentData.get("description"),
+                    message += String.format("%s%n%s%nfrom %s%n to %s%n%s", title, currentIntentData.get("description"),
                             beginTime.getTime(), endTime.getTime(), location);
                     break;
 
