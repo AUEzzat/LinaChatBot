@@ -14,7 +14,7 @@
         android:layout_below="@+id/imageView"
         android:layout_marginTop="24dp"
         android:layout_centerHorizontal="true"
-        android:src="@drawable/counting"
+        android:src="@drawable/girl_chuckle_icon"
         android:id="@+id/circleView"
         />
 

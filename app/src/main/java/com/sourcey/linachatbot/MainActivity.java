@@ -1,7 +1,6 @@
 package com.sourcey.linachatbot;
 
 import android.app.AlarmManager;
-import android.app.Dialog;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
@@ -18,10 +17,10 @@ import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.Window;
 import android.widget.TextView;
 
 import com.androidadvance.topsnackbar.TSnackbar;
@@ -70,19 +69,41 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
     private String token;
     private TSnackbar snackbar;
     private MenuItem characterType;
-    private int character;
+    private String character;
     private boolean connected = false;
     private boolean retrievedMessages = false;
+    private NetworkStateReceiver networkStateReceiver;
 
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event)  {
+        if (keyCode == KeyEvent.KEYCODE_BACK && event.getRepeatCount() == 0) {
+            if(mDrawer != null && mDrawer.isDrawerOpen(GravityCompat.END)) {
+                mDrawer.closeDrawers();
+                return false;
+            }
+            else {
+                return super.onKeyDown(keyCode, event);
+            }
+        }
 
+        return super.onKeyDown(keyCode, event);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if(networkStateReceiver != null) {
+            unregisterReceiver(networkStateReceiver);
+        }
+    }
     @Override
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
         outState.putString("token", token);
-        outState.putInt("character", character);
+        outState.putString("character", character);
         SharedPreferences mPrefs = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
         SharedPreferences.Editor prefsEditor = mPrefs.edit();
-        prefsEditor.putInt("character", character);
+        prefsEditor.putString("character", character);
         prefsEditor.commit();
     }
 
@@ -160,22 +181,16 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
 //        hmap.put("minute", "3");
 //        hmap.put("second", "0");
 //        new StartIntent(getBaseContext(), hmap, this);
-        Dialog settingsDialog = new Dialog(this);
-        settingsDialog.getWindow().requestFeature(Window.FEATURE_NO_TITLE);
-        settingsDialog.setContentView(getLayoutInflater().inflate(R.layout.image_layout
-                , null));
-
-        settingsDialog.show();
-        settingsDialog.dismiss();
-
-
-        NetworkStateReceiver networkStateReceiver = new NetworkStateReceiver();
+        networkStateReceiver = new NetworkStateReceiver();
         networkStateReceiver.addListener(this);
         this.registerReceiver(networkStateReceiver, new IntentFilter(android.net.ConnectivityManager.CONNECTIVITY_ACTION));
         setupDrawerContent(navDrawer);
         SharedPreferences mPrefs = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
-        character = mPrefs.getInt("character", 0);
-        navDrawer.setCheckedItem(characterNumber.getID(character));
+        character = mPrefs.getString("character", "Casual");
+        navDrawer.setCheckedItem(characterNumber.getID(characterNumber.get(character)));
+        ((TextView)navDrawer.getHeaderView(0).findViewById(R.id.drawer_header)).setText(character);
+        setTitle(character + " Lina");
+
         Gson gson = new Gson();
         String json = mPrefs.getString("user", "");
         if (!json.equals("")) {
@@ -236,8 +251,8 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_main, menu);
-
         characterType = menu.findItem(R.id.my_activity);
+
         return true;
     }
 
@@ -275,11 +290,11 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
                             mgr.set(AlarmManager.RTC, System.currentTimeMillis() + 100, mPendingIntent);
                             System.exit(0);
                         }
+                        setTitle(menuItem.getTitle() + " Lina");
                         characterType.setTitle(menuItem.getTitle());
-                        View header = navigationView.getHeaderView(0);
-                        TextView drawerHeader = (TextView) header.findViewById(R.id.drawer_header);
-                        drawerHeader.setText(menuItem.getTitle());
-                        character = characterNumber.get(menuItem.getTitle().toString());
+                        setTitle(characterType + " Lina");
+                        ((TextView)navigationView.getHeaderView(0).findViewById(R.id.drawer_header)).setText(menuItem.getTitle());
+                        character = menuItem.getTitle().toString();
                         menuItem.setChecked(true);
                         mDrawer.closeDrawers();
                         return true;
