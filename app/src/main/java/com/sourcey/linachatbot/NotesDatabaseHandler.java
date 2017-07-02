@@ -37,7 +37,7 @@ public class NotesDatabaseHandler extends SQLiteOpenHelper {
     public void onCreate(SQLiteDatabase db) {
         String CREATE_CONTACTS_TABLE = "CREATE TABLE " + TABLE_NOTES + "("
                 + KEY_TITLE + " TEXT PRIMARY KEY," +
-                KEY_TEXT + " TEXT," + ")";
+                KEY_TEXT + " TEXT" + ")";
         db.execSQL(CREATE_CONTACTS_TABLE);
     }
 

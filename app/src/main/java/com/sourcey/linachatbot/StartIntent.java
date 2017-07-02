@@ -15,6 +15,7 @@ import android.provider.Settings;
 import android.support.v4.app.ActivityCompat;
 import android.util.Log;
 
+import org.apache.commons.lang3.text.WordUtils;
 import org.json.JSONArray;
 import org.json.JSONException;
 
@@ -55,7 +56,7 @@ public class StartIntent {
             }
             switch (currentIntentData.get("type")) {
                 case "start_timer":
-                    message += '\n' + String.format(Locale.UK, "Timer of %s:%02d started at %s", currentIntentData.get("minute"),
+                    message += '\n' + String.format(Locale.UK, "Timer of %s:%02d started at %s.", currentIntentData.get("minute"),
                             Integer.parseInt(currentIntentData.get("second")), DateFormat.getTimeInstance().format(new Date()));
                     data.put("extra", "start_timer");
                     data.put("extra_minute", currentIntentData.get("minute"));
@@ -75,7 +76,7 @@ public class StartIntent {
                             .putExtra(AlarmClock.EXTRA_MESSAGE, currentIntentData.get("title"))
                             .putExtra(AlarmClock.EXTRA_HOUR, Integer.parseInt(currentIntentData.get("hour")))
                             .putExtra(AlarmClock.EXTRA_MINUTES, minute);
-                    message += '\n' + String.format("%s alarm set at %s:%s", currentIntentData.get("title"), currentIntentData.get("hour"),
+                    message += '\n' + String.format("%s alarm set at %s:%s.", currentIntentData.get("title"), currentIntentData.get("hour"),
                             String.format(Locale.UK, "%02d", minute));
                     break;
 
@@ -90,10 +91,10 @@ public class StartIntent {
 
                 case "call_number":
                     intent = new Intent(Intent.ACTION_CALL, Uri.parse("tel:" + currentIntentData.get("number")));
-                    message +=  String.format("called %s", currentIntentData.get("number"));
+                    message +=  String.format("called %s.", currentIntentData.get("number"));
                     if (ActivityCompat.checkSelfPermission(context, Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
                         Log.d(LOG_TAG, "Call Permission Not Granted");
-                        message +=  "Call Permission Not Granted";
+                        message +=  "Call Permission Not Granted.";
                         return;
                     }
                     break;
@@ -142,27 +143,27 @@ public class StartIntent {
                         }
                     }
                     if (contactName.equals("")) {
-                        message += String.format("No contact by the name %s was found", currentIntentData.get("contact_name"));
+                        message += String.format("No contact by the name %s was found.", currentIntentData.get("contact_name"));
                         break;
                     } else if (phoneNumber.equals("")) {
-                        message += String.format("No phone number was found for %s", contactName);
+                        message += String.format("No phone number was found for %s.", contactName);
                         break;
                     }
                     if (currentIntentData.get("type").equals("call_contact")) {
                         intent = new Intent(Intent.ACTION_CALL, Uri.parse("tel:" + phoneNumber));
                         message += String.format("called %s(%s)", currentIntentData.get("contact_name"), phoneNumber);
                         if (ActivityCompat.checkSelfPermission(context, Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
-                            message += "Call Permission Not Granted";
+                            message += "Call Permission Not Granted.";
                             Log.d(LOG_TAG, "Call Permission Not Granted");
                             return;
                         }
                     } else if (currentIntentData.get("type").equals("message_contact")) {
                         intent = new Intent(Intent.ACTION_VIEW, Uri.parse("sms:" + phoneNumber));
                         intent.putExtra("sms_body", currentIntentData.get("message"));
-                        message += String.format("%s is sent to %s(%s)", currentIntentData.get("message"), contactName, phoneNumber);
+                        message += String.format("%s is sent to %s(%s).", currentIntentData.get("message"), contactName, phoneNumber);
                     }
                     else {
-                        message += String.format("%s info:%nPhone number: %s", contactName, phoneNumber);
+                        message += String.format("%s info:\nPhone number: %s.", contactName, phoneNumber);
                     }
 
                     break;
@@ -170,7 +171,7 @@ public class StartIntent {
                 case "message_number":
                     intent = new Intent(Intent.ACTION_VIEW, Uri.parse("sms:" + currentIntentData.get("number")));
                     intent.putExtra("sms_body", currentIntentData.get("message"));
-                    message += String.format("%s is sent to %s", currentIntentData.get("message"), currentIntentData.get("number"));
+                    message += String.format("%s is sent to %s.", currentIntentData.get("message"), currentIntentData.get("number"));
                     break;
 
                 case "send_email":
@@ -186,7 +187,7 @@ public class StartIntent {
                     if (!subject.equals("")) {
                         subject = subject + ",";
                     }
-                    message += String.format("%s%n%s%n%nis sent to %s", subject, body, currentIntentData.get("email"));
+                    message += String.format("%s\n%s\n\nis sent to %s.", subject, body, currentIntentData.get("email"));
                     break;
 
                 case "set_event":
@@ -247,23 +248,23 @@ public class StartIntent {
                     if (!location.equals("")) {
                         location = "at " + location;
                     }
-                    message += String.format("%s%n%s%nfrom %s%n to %s%n%s", title, currentIntentData.get("description"),
+                    message += String.format("%s\n%s\nfrom %s\n to %s\n%s.", title, currentIntentData.get("description"),
                             beginTime.getTime(), endTime.getTime(), location);
                     break;
 
                 case "show_date_time":
                     String currentDateTimeString = DateFormat.getDateTimeInstance().format(new Date());
-                    message += String.format("Current Date and Time is: %s", currentDateTimeString);
+                    message += String.format("Current Date and Time is: %s.", currentDateTimeString);
                     break;
 
                 case "show_date":
                     String currentDateString = DateFormat.getDateInstance().format(new Date());
-                    message += String.format("Current Date is: %s", currentDateString);
+                    message += String.format("Current Date is: %s.", currentDateString);
                     break;
 
                 case "show_time":
                     String currentTimeString = DateFormat.getTimeInstance().format(new Date());
-                    message += String.format("Current Time is: %s", currentTimeString);
+                    message += String.format("Current Time is: %s.", currentTimeString);
                     break;
 
                 case "save_note":
@@ -271,16 +272,16 @@ public class StartIntent {
                     noteData = new NotesDatabaseHandler(context);
                     note = noteData.getNote(noteTitle);
                     if(note != null) {
-                        message += "note already exists\nuse edit note to edit text\nor choose another title";
+                        message += "note already exists\nuse edit note to edit text\nor choose another title.";
                     }
                     else {
-                        noteText = currentIntentData.get("text");
+                        noteText = currentIntentData.get("description");
                         note = new Note(noteTitle, noteText);
                         noteData.addNote(note);
                         if (!noteText.equals("")) {
                             noteTitle += ":\n";
                         }
-                        message += String.format("%s%s saved", noteTitle, noteText);
+                        message += String.format("your note\n%s%s saved.", noteTitle, noteText);
                     }
                     break;
 
@@ -289,14 +290,15 @@ public class StartIntent {
                     noteData = new NotesDatabaseHandler(context);
                     note = noteData.getNote(noteTitle);
                     if(note == null) {
-                        message += String.format("%s note doesn't exist", noteTitle);
+                        message += String.format("%no note by the name %s was found.", noteTitle);
                     }
                     else {
                         noteText = note.getText();
+                        noteTitle = "note "+noteTitle;
                         if(!noteText.equals("")) {
                             noteTitle += ":\n";
                         }
-                        message += String.format("%s%s", noteTitle, noteText);
+                        message += String.format("showing %s%s.", noteTitle, noteText);
                     }
                     break;
                 case "edit_note":
@@ -304,30 +306,30 @@ public class StartIntent {
                     noteData = new NotesDatabaseHandler(context);
                     note = noteData.getNote(noteTitle);
                     if(note == null) {
-                        message += String.format("%s note doesn't exist", noteTitle);
+                        message += String.format("%s note doesn't exist.", noteTitle);
                     }
                     else {
                         noteText = currentIntentData.get("text");
                         note.setText(noteText);
                         noteData.updateNoteText(note);
-                        noteTitle = noteTitle + " text updated to";
+                        noteTitle = "note " + noteTitle + " text updated to";
                         if(!noteText.equals("")) {
                             noteTitle += ":\n";
                         }
-                        message += String.format("%s%s", noteTitle, noteText);
+                        message += String.format("note %s%s\n updated.", noteTitle, noteText);
                     }
                     break;
 
-                case "delete_note":
+                case "remove_note":
                     noteTitle = currentIntentData.get("title");
                     noteData = new NotesDatabaseHandler(context);
                     note = noteData.getNote(noteTitle);
                     if(note == null) {
-                        message += String.format("%s note doesn't exist", noteTitle);
+                        message += String.format("no note by the name %s was found.", noteTitle);
                     }
                     else {
                         noteData.deleteNote(note);
-                        message += String.format("%s note deleted", noteTitle);
+                        message += String.format("your %s note is deleted.", noteTitle);
                     }
                     break;
 
@@ -338,10 +340,11 @@ public class StartIntent {
                         note = noteData.getLastNote();
                         noteTitle = note.getTitle();
                         noteText = note.getText();
+                        noteTitle = "note " + noteTitle;
                         if (!noteText.equals("")) {
                             noteTitle += ":\n";
                         }
-                        message += String.format("%s%s", noteTitle, noteText);
+                        message += String.format("last note is %s%s", noteTitle, noteText);
                     }
                     else {
                         message += "you have no notes to show";
@@ -351,10 +354,13 @@ public class StartIntent {
                 case "show_all_notes":
                     noteData = new NotesDatabaseHandler(context);
                     noteCount = noteData.getNotesCount();
+                    message += "your notes are:\n";
                     if(noteCount > 0) {
                         List<Note> notes = noteData.getAllNotes();
+                        int counter = 0;
                         for(Note currentNote:notes) {
                             noteTitle = currentNote.getTitle();
+                            noteTitle = String.format("note %s %s" , ++counter,noteTitle);
                             noteText = currentNote.getText();
                             if (!noteText.equals("")) {
                                 noteTitle += ":\n";
@@ -367,7 +373,7 @@ public class StartIntent {
                     }
                     break;
             }
-            message = capitalizeFormat(message) + ".\n\n";
+            message = WordUtils.capitalizeFully(message + "\n\n", '\n');
         }
 
         if (intent != null) {

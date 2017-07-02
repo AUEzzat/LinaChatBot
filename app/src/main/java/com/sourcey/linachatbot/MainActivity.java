@@ -114,7 +114,7 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
                 messageJSON.put("command", command);
                 messageJSON.put("message", message);
                 messageJSON.put("token", token);
-                messageJSON.put("character", character);
+                messageJSON.put("character", characterNumber.get(character));
                 if (!id.equals("")) {
                     messageJSON.put("msg_id", id);
                 }
