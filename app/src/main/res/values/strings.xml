@@ -1,19 +1,21 @@
 <resources>
     <string name="app_name">Lina</string>
     <string name="action_logout">Logout</string>
+    <string name="action_delete_chat_history">Clear History</string>
+    <string name="action_help">Help</string>
     <string name="open">Open navigation drawer</string>
     <string name="close">Close navigation drawer</string>
     <!--lina characters-->
     <string name="ic_one">Casual</string>
     <string name="ic_two">Adventurous</string>
-    <string name="ic_three">Amiable</string>
+    <string name="ic_three">Friendly</string>
     <string name="ic_four">Amusing</string>
     <string name="ic_five">Devious</string>
-    <string name="ic_six">Debonair</string>
+    <string name="ic_six">Urbane</string>
     <string name="ic_seven">Fanciful</string>
-    <string name="ic_eight">Agonizing</string>
-    <string name="ic_nine">Frightening</string>
+    <string name="ic_eight">Grieving</string>
+    <string name="ic_nine">Frightened</string>
     <string name="ic_ten">Romantic</string>
-    <string name="ic_eleven">Dreamy</string>
+    <string name="ic_eleven">Imaginative</string>
     <string name="ic_twelve">Gloomy</string>
 </resources>

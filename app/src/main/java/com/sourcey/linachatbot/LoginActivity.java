@@ -46,11 +46,12 @@ public class LoginActivity extends AppCompatActivity implements OnTaskCompleted 
     private Handler delayHandler = new android.os.Handler();
     private Runnable delayRunnable = new Runnable() {
         public void run() {
-            serverStatus = "failed to reach server";
+            serverStatus = "Failed to reach server";
             onLoginFailed();
             progressDialog.dismiss();
         }
     };
+    private String toastText;
 
 
     @Override
@@ -167,10 +168,7 @@ public class LoginActivity extends AppCompatActivity implements OnTaskCompleted 
     }
 
     public void onLoginFailed() {
-        String toastText;
-        if (serverStatus == null) {
-            toastText = "Enter a valid data";
-        } else if (serverStatus.equals("bad input")) {
+        if (serverStatus != null && serverStatus.equals("bad input")) {
             toastText = "Bad Login Credentials";
             if (retrievedUsername != null && retrievedUsername.equals("This username is not valid.")) {
                 _username_or_email.setError("Username doesn't exist");
@@ -184,17 +182,18 @@ public class LoginActivity extends AppCompatActivity implements OnTaskCompleted 
                 _passwordText.setError("Incorrect password");
                 toastText = "Incorrect password";
             }
-        } else {
+        } else if (serverStatus == null && toastText == null) {
             toastText = "Couldn't reach server";
         }
-//        User user = getUserState();
-//        if(user != null) {
-//            user.loggedIn = false;
-//            saveUserState(user);
-//        }
-        new CustomToast(getBaseContext(), toastText, false);
-        _loginButton.setEnabled(true);
-    }
+        else {
+            toastText = serverStatus;
+        }
+        if (toastText == null) {
+            toastText = "Something went wrong please try again";
+        }
+            new CustomToast(getBaseContext(), toastText, false);
+            _loginButton.setEnabled(true);
+        }
 
     public boolean validate() {
         boolean valid = true;
@@ -204,16 +203,16 @@ public class LoginActivity extends AppCompatActivity implements OnTaskCompleted 
 
         if (!usernameOrEmail.isEmpty() && android.util.Patterns.EMAIL_ADDRESS.matcher(usernameOrEmail).matches()) {
             email = usernameOrEmail;
-        }
-        else if (!usernameOrEmail.isEmpty() && Pattern.compile("^[a-z0-9_-]{3,15}$").matcher(usernameOrEmail).matches()) {
+        } else if (!usernameOrEmail.isEmpty() && Pattern.compile("^[a-z0-9_-]{3,15}$").matcher(usernameOrEmail).matches()) {
             username = usernameOrEmail;
-        }
-        else {
-            _username_or_email.setError("enter a valid username or a valid email");
+        } else {
+            _username_or_email.setError("Enter a valid username or a valid email");
+            toastText = "Enter a valid username or a valid email";
             valid = false;
         }
         if (password.isEmpty() || password.length() < 4 || password.length() > 10) {
-            _passwordText.setError("between 4 and 10 alphanumeric characters");
+            _passwordText.setError("Password must be between 4 and 10 alphanumeric characters");
+            toastText = "Password must be between 4 and 10 alphanumeric characters";
             valid = false;
         } else {
             _passwordText.setError(null);

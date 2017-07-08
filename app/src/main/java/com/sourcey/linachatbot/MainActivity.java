@@ -2,6 +2,8 @@ package com.sourcey.linachatbot;
 
 import android.app.AlarmManager;
 import android.app.PendingIntent;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -12,7 +14,9 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.preference.PreferenceManager;
+import android.support.design.internal.NavigationMenuView;
 import android.support.design.widget.NavigationView;
+import android.support.v4.app.FragmentTransaction;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.AppCompatActivity;
@@ -21,6 +25,9 @@ import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.AdapterView;
+import android.widget.ListView;
 import android.widget.TextView;
 
 import com.androidadvance.topsnackbar.TSnackbar;
@@ -37,6 +44,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
+import java.net.ProtocolException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -46,7 +54,11 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.net.ssl.SSLContext;
 
@@ -55,7 +67,10 @@ import butterknife.ButterKnife;
 import co.intentservice.chatui.ChatView;
 import co.intentservice.chatui.models.ChatMessage;
 
-public class MainActivity extends AppCompatActivity implements OnTaskCompleted, NetworkStateReceiverListener {
+import static com.sourcey.linachatbot.characterNumber.get;
+
+public class MainActivity extends AppCompatActivity implements OnTaskCompleted, NetworkStateReceiverListener, OnFragmentClickListener {
+
     @Bind(R.id.main_view)
     DrawerLayout mDrawer;
     @Bind(R.id.nav_view)
@@ -73,15 +88,51 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
     private boolean connected = false;
     private boolean retrievedMessages = false;
     private NetworkStateReceiver networkStateReceiver;
+    private ArrayList<String> messagesID = new ArrayList<>();
+    private Map<String, DefaultHashMap<String, String>> messagesMap = new HashMap<>();
+
 
     @Override
-    public boolean onKeyDown(int keyCode, KeyEvent event)  {
+    public void onFragmentClick(int action, DefaultHashMap<String, String> details) {
+        DefaultHashMap<String, String> data = new DefaultHashMap<>("");
+        if (details == null) {
+            return;
+        }
+        data.putAll(details);
+        if (action == 0) {
+            ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+            ClipData clip = ClipData.newPlainText(null, data.get("message"));
+            clipboard.setPrimaryClip(clip);
+            new CustomToast(getBaseContext(), "Message copied to the clipboard", true);
+        }
+        if (action == 2) {
+            FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
+            // Create and show the dialog.
+            ShowDialog messageDialog = new ShowDialog();
+            Bundle dialogBundle = new Bundle();
+            dialogBundle.putSerializable("data", details);
+            dialogBundle.putInt("carry_id", 10);
+            dialogBundle.putString("redB", "OK");
+            dialogBundle.putString("greenB", "Cancel");
+            messageDialog.setArguments(dialogBundle);
+            messageDialog.show(ft, "dialog");
+        }
+        if (action == 15) {
+            if (data.get("message").equals("")) {
+                new CustomToast(getBaseContext(), "Message can't be empty", true);
+                return;
+            }
+            sendMessageHelper(token, "history", data.get("message"), data.get("id"), true);
+        }
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_BACK && event.getRepeatCount() == 0) {
-            if(mDrawer != null && mDrawer.isDrawerOpen(GravityCompat.END)) {
+            if (mDrawer != null && mDrawer.isDrawerOpen(GravityCompat.END)) {
                 mDrawer.closeDrawers();
                 return false;
-            }
-            else {
+            } else {
                 return super.onKeyDown(keyCode, event);
             }
         }
@@ -92,10 +143,15 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
     @Override
     protected void onStop() {
         super.onStop();
-        if(networkStateReceiver != null) {
-            unregisterReceiver(networkStateReceiver);
+        if (networkStateReceiver != null) {
+            try {
+                unregisterReceiver(networkStateReceiver);
+            } catch (IllegalArgumentException e) {
+                e.printStackTrace();
+            }
         }
     }
+
     @Override
     public void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
@@ -107,16 +163,23 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
         prefsEditor.commit();
     }
 
-    private boolean sendMessageHelper(String token, String command, String message, String id) {
+    private boolean sendMessageHelper(String token, String command, String message, String id, boolean dialog) {
         if (getResponse != null && getResponse.open) {
+            if (!dialog) {
+                messagesID.add(id);
+                DefaultHashMap<String, String> currentMessageMap = messageMediaSeparator(message);
+                currentMessageMap.put("type", "not_editable");
+                messagesMap.put(id, currentMessageMap);
+            }
             JSONObject messageJSON = new JSONObject();
             try {
                 messageJSON.put("command", command);
                 messageJSON.put("message", message);
                 messageJSON.put("token", token);
-                messageJSON.put("character", characterNumber.get(character));
-                if (!id.equals("")) {
+                if (command.equals("history")) {
                     messageJSON.put("msg_id", id);
+                } else {
+                    messageJSON.put("character", get(character));
                 }
             } catch (JSONException e) {
                 e.printStackTrace();
@@ -137,7 +200,7 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
 
             @Override
             public boolean sendMessage(ChatMessage ChatMessage) {
-                return sendMessageHelper(token, "send", ChatMessage.getMessage(), "");
+                return sendMessageHelper(token, "send", ChatMessage.getMessage(), ChatMessage.getFormattedTime(), false);
             }
         });
     }
@@ -175,21 +238,69 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         ButterKnife.bind(this);
-
-//        DefaultHashMap<String, String> hmap = new DefaultHashMap<>("");
-//        hmap.put("name", "start_timer");
-//        hmap.put("minute", "3");
-//        hmap.put("second", "0");
-//        new StartIntent(getBaseContext(), hmap, this);
         networkStateReceiver = new NetworkStateReceiver();
         networkStateReceiver.addListener(this);
         this.registerReceiver(networkStateReceiver, new IntentFilter(android.net.ConnectivityManager.CONNECTIVITY_ACTION));
         setupDrawerContent(navDrawer);
         SharedPreferences mPrefs = PreferenceManager.getDefaultSharedPreferences(getBaseContext());
         character = mPrefs.getString("character", "Casual");
-        navDrawer.setCheckedItem(characterNumber.getID(characterNumber.get(character)));
-        ((TextView)navDrawer.getHeaderView(0).findViewById(R.id.drawer_header)).setText(character);
+        navDrawer.setCheckedItem(characterNumber.getID(get(character)));
+        ((TextView) navDrawer.getHeaderView(0).findViewById(R.id.drawer_header)).setText(character);
+        ((de.hdodenhof.circleimageview.CircleImageView) navDrawer.getHeaderView(0).findViewById(R.id.circle_view))
+                .setImageResource(characterNumber.getImg(get(character)));
+        mDrawer.addDrawerListener(new DrawerLayout.DrawerListener() {
+            @Override
+            public void onDrawerSlide(View drawerView, float slideOffset) {
+
+            }
+
+            @Override
+            public void onDrawerOpened(View drawerView) {
+                View view = getCurrentFocus();
+                if (view != null) {
+                    InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                    imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+                }
+            }
+
+            @Override
+            public void onDrawerClosed(View drawerView) {
+
+            }
+
+            @Override
+            public void onDrawerStateChanged(int newState) {
+
+            }
+        });
         setTitle(character + " Lina");
+
+        //listener to mouse clicks on chat bubbles
+        final ListView messages = (ListView) chatView.getChildAt(0);
+        messages.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                DefaultHashMap<String, String> messageDetails = new DefaultHashMap<>("");
+                messageDetails.putAll(messagesMap.get(messagesID.get(position)));
+                messageDetails.put("id", messagesID.get(position));
+                ArrayList<String> shownItems = new ArrayList<>();
+                shownItems.add("Copy");
+                shownItems.add("Display message");
+                if (!messageDetails.get("type").equals("not_editable")) {
+                    shownItems.add("Edit reply");
+                }
+//                new CustomToast(getBaseContext(), messagesID.get(position), true);
+                FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
+                // Create and show the dialog.
+                ShowDialog messageDialog = new ShowDialog();
+                Bundle dialogBundle = new Bundle();
+                dialogBundle.putStringArrayList("list", shownItems);
+                dialogBundle.putSerializable("data", messageDetails);
+                messageDialog.setArguments(dialogBundle);
+                messageDialog.show(ft, "dialog");
+            }
+        });
+
 
         Gson gson = new Gson();
         String json = mPrefs.getString("user", "");
@@ -205,7 +316,6 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
                 return;
             }
         }
-
         Intent intent = new Intent(this, LoginActivity.class);
         startActivityForResult(intent, 0);
     }
@@ -285,18 +395,27 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
                             clearPref();
                             Intent mStartActivity = new Intent(getBaseContext(), MainActivity.class);
                             int mPendingIntentId = 123456;
-                            PendingIntent mPendingIntent = PendingIntent.getActivity(getBaseContext(), mPendingIntentId, mStartActivity, PendingIntent.FLAG_CANCEL_CURRENT);
+                            PendingIntent mPendingIntent = PendingIntent.getActivity(getBaseContext(), mPendingIntentId,
+                                    mStartActivity, PendingIntent.FLAG_CANCEL_CURRENT);
                             AlarmManager mgr = (AlarmManager) getBaseContext().getSystemService(Context.ALARM_SERVICE);
                             mgr.set(AlarmManager.RTC, System.currentTimeMillis() + 100, mPendingIntent);
                             System.exit(0);
+                        } else if (menuItem.getItemId() == R.id.action_delete_chat_history) {
+                            deleteChatHistory clearChatHistory = new deleteChatHistory();
+                            clearChatHistory.execute();
+                        } else if (menuItem.getItemId() == R.id.action_help) {
+                            return false;
                         }
                         setTitle(menuItem.getTitle() + " Lina");
                         characterType.setTitle(menuItem.getTitle());
-                        setTitle(characterType + " Lina");
-                        ((TextView)navigationView.getHeaderView(0).findViewById(R.id.drawer_header)).setText(menuItem.getTitle());
+                        ((NavigationMenuView) navigationView.getChildAt(0)).smoothScrollToPosition(0);
+                        View drawerHeader = navigationView.getHeaderView(0);
+                        ((TextView) drawerHeader.findViewById(R.id.drawer_header)).setText(menuItem.getTitle());
+                        ((de.hdodenhof.circleimageview.CircleImageView) drawerHeader.findViewById(R.id.circle_view))
+                                .setImageResource(characterNumber.getImg(get(menuItem.getTitle().toString())));
                         character = menuItem.getTitle().toString();
                         menuItem.setChecked(true);
-                        mDrawer.closeDrawers();
+//                        mDrawer.closeDrawers();
                         return true;
                     }
                 });
@@ -309,6 +428,7 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
                 mDrawer,
                 message,
                 TSnackbar.LENGTH_INDEFINITE);
+        messagesID.add(id);
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -331,12 +451,13 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
                                 chatView.addMessage(message);
                             }
                         });
-                        sendMessageHelper(token, "history", messageText, id);
+                        sendMessageHelper(token, "history", messageText, id, false);
+                        DefaultHashMap<String, String> temp = messagesMap.get(id);
+                        temp.put("message", messageText);
+                        messagesMap.put(id, temp);
                     }
-
                 };
                 timer.start();
-
                 timerBar.setAction("Stop", new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
@@ -362,11 +483,18 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
         if (type.equals("message")) {
             String messageText = data.get("message");
             String id = data.get("id");
+            String lineId = data.get("line_id");
             if (data.get("extra").equals("start_timer")) {
                 setTimer(Integer.parseInt(data.get("extra_minute")), Integer.parseInt(data.get("extra_second")), id);
-            }
-            if (!id.equals("")) {
-                sendMessageHelper(token, "history", messageText, id);
+            } else if (data.get("extra_type").equals("intent")) {
+                sendMessageHelper(token, "history", messageText, id, false);
+            } else {
+                messagesID.add(id);
+                DefaultHashMap<String, String> currentMessageMap = messageMediaSeparator(messageText);
+                if (lineId.equals("null")) {
+                    currentMessageMap.put("type", "not_editable");
+                }
+                messagesMap.put(id, currentMessageMap);
             }
             final ChatMessage message = new ChatMessage(messageText, formattedTime, ChatMessage.Type.RECEIVED);
             runOnUiThread(new Runnable() {
@@ -384,22 +512,112 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
         }
     }
 
+    private DefaultHashMap<String, String> messageMediaSeparator(String messageText) {
+        DefaultHashMap<String, String> currentMessageMap = new DefaultHashMap<>("");
+        String videoPattern = "https?:\\/\\/(?:[0-9A-Z-]+\\.)?" +
+                "(?:youtu\\.be\\/|youtube\\.com\\S*[^\\w\\-\\s])([\\w\\-]{11})(?=[^\\w\\-]|$)(?![?=&+%\\w]*(?:['\"][^<>]*>|<\\/a>))[?=&+%\\w]*";
+        Pattern compiledVideoPattern = Pattern.compile(videoPattern, Pattern.CASE_INSENSITIVE);
+        Matcher videoMatcher = compiledVideoPattern.matcher(messageText);
+        String videoUrl = "";
+        if (videoMatcher.find()) {
+            videoUrl = videoMatcher.group();
+            currentMessageMap.put("video_url", videoUrl);
+        }
+        String imagePattern = "https?:/(?:/[^/]+/?)+\\.(?:jpg|gif|png)";
+        Pattern compiledImagePattern = Pattern.compile(imagePattern, Pattern.CASE_INSENSITIVE);
+        Matcher imageMatcher = compiledImagePattern.matcher(messageText);
+        String imageUrl = "";
+        if (imageMatcher.find()) {
+            imageUrl = imageMatcher.group();
+            currentMessageMap.put("image_url", imageUrl);
+        }
+        currentMessageMap.put("message", messageText.replace(videoUrl, "").replace(imageUrl, ""));
+        return currentMessageMap;
+    }
+
+    public class deleteChatHistory extends AsyncTask<Void, Void, Boolean> {
+        @Override
+        protected Boolean doInBackground(Void... params) {
+            Uri.Builder deleteChatHistoryUrl = new Uri.Builder();
+            HttpURLConnection urlConnection = null;
+
+            deleteChatHistoryUrl.scheme("https")
+                    .authority("linachatbot.herokuapp.com")
+                    .appendPath("api")
+                    .appendPath("chat")
+                    .appendPath("messages")
+                    .appendPath("delete");
+            try {
+                URL url = new URL(deleteChatHistoryUrl.toString());
+                urlConnection = (HttpURLConnection) url.openConnection();
+                urlConnection.setRequestMethod("DELETE");
+                urlConnection.setConnectTimeout(10000);
+                urlConnection.setReadTimeout(10000);
+                urlConnection.setRequestProperty("Authorization", "jwt " + token);
+                urlConnection.setUseCaches(false);
+                urlConnection.connect();
+                final int HttpResultCode = urlConnection.getResponseCode();
+                if (HttpResultCode == HttpURLConnection.HTTP_NO_CONTENT) {
+                    return true;
+                } else {
+                    Log.i("failed: ", Integer.toString(HttpResultCode));
+                }
+            } catch (MalformedURLException e) {
+                e.printStackTrace();
+            } catch (ProtocolException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return false;
+        }
+
+        @Override
+        protected void onPostExecute(Boolean aBoolean) {
+            super.onPostExecute(aBoolean);
+            if (aBoolean != null && aBoolean) {
+                new CustomToast(getBaseContext(), "History is cleared", true);
+                Intent mStartActivity = new Intent(getBaseContext(), MainActivity.class);
+                int mPendingIntentId = 123456;
+                PendingIntent mPendingIntent = PendingIntent.getActivity(getBaseContext(), mPendingIntentId,
+                        mStartActivity, PendingIntent.FLAG_CANCEL_CURRENT);
+                AlarmManager mgr = (AlarmManager) getBaseContext().getSystemService(Context.ALARM_SERVICE);
+                mgr.set(AlarmManager.RTC, System.currentTimeMillis() + 100, mPendingIntent);
+                System.exit(0);
+            } else {
+                new CustomToast(getBaseContext(), "Couldn't clear history", true);
+            }
+        }
+    }
+
     public class getOldMessages extends AsyncTask<String, Void, ArrayList<ChatMessage>> {
 
         private final String LOG_TAG = getOldMessages.class.getSimpleName();
 
         private ArrayList<ChatMessage> getOldMessagesFromJson(String oldMessagesJsonStr) throws JSONException, IOException, ParseException {
-
+            Log.i(LOG_TAG, oldMessagesJsonStr);
             JSONObject oldMessagesJsonObj = new JSONObject(oldMessagesJsonStr);
             JSONArray oldMessagesJsonArray = oldMessagesJsonObj.getJSONArray("results");
             ArrayList<ChatMessage> oldMessages = new ArrayList<>(oldMessagesJsonArray.length());
 
             for (int i = 0; i < oldMessagesJsonArray.length(); i++) {
                 JSONObject oldMessage = oldMessagesJsonArray.getJSONObject(i);
-
+                String id = oldMessage.getString("id");
+                String lineId;
+                try {
+                    lineId = oldMessage.getString("lineId");
+                } catch (JSONException e) {
+                    lineId = "null";
+                }
                 String messageText = oldMessage.getString("message");
+                messagesID.add(0, id);
+                DefaultHashMap<String, String> currentMessageMap = messageMediaSeparator(messageText);
+                if (lineId.equals("null")) {
+                    currentMessageMap.put("type", "not_editable");
+                }
+                messagesMap.put(id, currentMessageMap);
                 if (messageText.equals("")) {
-                    continue;
+                    messageText = "¯\\_(ツ)_/¯";
                 }
                 String humanUser = oldMessage.getString("owner");
                 Long messageTime = Long.parseLong(oldMessage.getString("formated_timestamp"));
@@ -474,13 +692,13 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
 
         @Override
         protected void onPostExecute(ArrayList<ChatMessage> oldMessages) {
-            if (oldMessages != null) {
+            if (oldMessages != null && !retrievedMessages) {
+                retrievedMessages = true;
                 chatView.addMessages(oldMessages);
                 if (snackbar != null) {
                     snackbar.dismiss();
                 }
-            } else if (connected) {
-                retrievedMessages = true;
+            } else if (connected && !retrievedMessages) {
                 snackbar = TSnackbar.make(mDrawer, "Failed to retrieve old messages", TSnackbar.LENGTH_INDEFINITE);
                 snackbar.setAction("Retry", new View.OnClickListener() {
                     @Override
@@ -492,7 +710,7 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
                 View snackbarView = snackbar.getView();
                 snackbarView.setBackgroundColor(Color.parseColor("#FF8A80"));
                 snackbar.show();
-            } else {
+            } else if (!retrievedMessages) {
                 new CustomToast(getBaseContext(), "failed to retrieve old messages", true);
             }
         }

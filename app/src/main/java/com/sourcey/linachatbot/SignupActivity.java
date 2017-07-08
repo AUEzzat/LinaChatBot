@@ -43,11 +43,12 @@ public class SignupActivity extends AppCompatActivity implements OnTaskCompleted
     private Handler delayHandler = new android.os.Handler();
     private Runnable delayRunnable = new Runnable() {
         public void run() {
-            serverStatus = "failed to reach server";
+            serverStatus = "Failed to reach server";
             onSignupFailed();
             progressDialog.dismiss();
         }
     };
+    private String toastText;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -118,10 +119,7 @@ public class SignupActivity extends AppCompatActivity implements OnTaskCompleted
     }
 
     public void onSignupFailed() {
-        String toastText;
-        if (serverStatus == null) {
-            toastText = "Enter a valid data";
-        } else if (serverStatus.equals("bad input")) {
+        if (serverStatus != null && serverStatus.equals("bad input")) {
             toastText = "User already exists";
             if (retrievedUsername != null && retrievedUsername.equals("A user with that username already exists.")) {
                 _username.setError("Username already exists choose another username or login");
@@ -131,8 +129,14 @@ public class SignupActivity extends AppCompatActivity implements OnTaskCompleted
                 _emailText.setError("Email already registered please login");
                 toastText = "Email already exists";
             }
-        } else {
+        } else if (serverStatus == null && toastText == null) {
             toastText = "Couldn't reach server";
+        }
+        else {
+            toastText = serverStatus;
+        }
+        if (toastText == null) {
+            toastText = "Something went wrong please try again";
         }
         new CustomToast(getBaseContext(), toastText, false);
         _signupButton.setEnabled(true);
@@ -146,8 +150,13 @@ public class SignupActivity extends AppCompatActivity implements OnTaskCompleted
         password = _passwordText.getText().toString();
         String reEnterPassword = _reEnterPasswordText.getText().toString();
 
-        if (username.isEmpty() || !Pattern.compile("^[a-z0-9_-]{3,15}$").matcher(username).matches()) {
-            _username.setError("enter a valid username,\n characters, numerals and [-,_] are allowed only");
+        if (username.isEmpty() || username.length() < 3) {
+            _username.setError("Username must be more than 3 characters");
+            toastText = "Username must be more than 3 characters";
+            valid = false;
+        } else if (!Pattern.compile("^[a-z0-9_-]{3,15}$").matcher(username).matches()) {
+            _username.setError("Enter a valid username,\n characters, numerals and [-,_] are allowed only");
+            toastText = "Enter a valid username,\n characters, numerals and [-,_] are allowed only";
             valid = false;
         } else {
             _username.setError(null);
@@ -155,21 +164,24 @@ public class SignupActivity extends AppCompatActivity implements OnTaskCompleted
 
 
         if (email.isEmpty() || !android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-            _emailText.setError("enter a valid email address");
+            _emailText.setError("Enter a valid email address");
+            toastText = "Enter a valid email address";
             valid = false;
         } else {
             _emailText.setError(null);
         }
 
         if (password.isEmpty() || password.length() < 4 || password.length() > 10) {
-            _passwordText.setError("between 4 and 10 alphanumeric characters");
+            _passwordText.setError("Password must be between 4 and 10 alphanumeric characters");
+            toastText = "Password must be between 4 and 10 alphanumeric characters";
             valid = false;
         } else {
             _passwordText.setError(null);
         }
 
         if (reEnterPassword.isEmpty() || reEnterPassword.length() < 4 || reEnterPassword.length() > 10 || !(reEnterPassword.equals(password))) {
-            _reEnterPasswordText.setError("Password Do not match");
+            _reEnterPasswordText.setError("Password Doesn't not match");
+            toastText = "Password Doesn't not match";
             valid = false;
         } else {
             _reEnterPasswordText.setError(null);

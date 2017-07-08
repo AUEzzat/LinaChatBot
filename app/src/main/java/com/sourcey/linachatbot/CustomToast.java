@@ -10,7 +10,7 @@ import android.widget.Toast;
 
 public class CustomToast {
     CustomToast(Context context, String text, boolean chat) {
-        Toast toast = Toast.makeText(context, text, Toast.LENGTH_LONG);
+        Toast toast = Toast.makeText(context, text, Toast.LENGTH_SHORT);
         View toastView = toast.getView();
         if(chat) {
             toastView.setBackgroundResource(R.drawable.toast_shape_chat);

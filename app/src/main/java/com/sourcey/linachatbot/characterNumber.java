@@ -11,23 +11,23 @@ public class characterNumber {
                 return 0;
             case "Adventurous":
                 return 1;
-            case "Amiable":
+            case "Friendly":
                 return 2;
             case "Amusing":
                 return 3;
             case "Devious":
                 return 4;
-            case "Debonair":
+            case "Urbane":
                 return 5;
             case "Fanciful":
                 return 6;
-            case "Agonizing":
+            case "Grieving":
                 return 7;
-            case "Frightening":
+            case "Frightened":
                 return 8;
             case "Romantic":
                 return 9;
-            case "Dreamy":
+            case "Imaginative":
                 return 10;
             case "Gloomy":
                 return 11;
@@ -61,6 +61,35 @@ public class characterNumber {
                 return R.id.ic_eleven;
             case 11:
                 return R.id.ic_twelve;
+        }
+        return R.id.ic_one;
+    }
+    public static int getImg(int character){
+        switch (character) {
+            case 0:
+                return R.drawable.casual;
+            case 1:
+                return R.drawable.adventurous;
+            case 2:
+                return R.drawable.friendly;
+            case 3:
+                return R.drawable.amusing;
+            case 4:
+                return R.drawable.devious;
+            case 5:
+                return R.drawable.urbane;
+            case 6:
+                return R.drawable.fanciful;
+            case 7:
+                return R.drawable.grieving;
+            case 8:
+                return R.drawable.frightened;
+            case 9:
+                return R.drawable.romantic;
+            case 10:
+                return R.drawable.imaginative;
+            case 11:
+                return R.drawable.gloomy;
         }
         return R.id.ic_one;
     }

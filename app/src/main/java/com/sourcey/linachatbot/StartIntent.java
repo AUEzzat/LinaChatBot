@@ -33,8 +33,6 @@ import java.util.Locale;
 public class StartIntent {
     private final String LOG_TAG = StartIntent.class.getSimpleName();
 
-    private OnTaskCompleted listener;
-
     StartIntent(Context context, DefaultHashMap<String, String> data, OnTaskCompleted listener) throws JSONException {
         Intent intent = null;
         String message = "";
@@ -384,24 +382,9 @@ public class StartIntent {
         if (!message.equals("")) {
             data.put("type", "message");
             data.put("message", message.trim());
+            data.put("extra_type", "intent");
             listener.onTaskCompleted(data);
         }
     }
 
-    private String capitalizeFormat(final String text) {
-        boolean emptyLine = false;
-        String[] sArray = text.split("\n");
-        String s = "";
-        for(int i=0;i<sArray.length;i++) {
-            if (sArray[i].equals("") && !s.equals("") && !emptyLine){
-                s += "\n";
-                emptyLine = true;
-            }
-            else if(!sArray[i].equals("")){
-                s += Character.toUpperCase(sArray[i].charAt(0)) + sArray[i].substring(1);
-                emptyLine = false;
-            }
-        }
-        return s.trim();
-    }
 }

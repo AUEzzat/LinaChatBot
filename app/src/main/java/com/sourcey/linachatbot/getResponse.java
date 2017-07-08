@@ -3,7 +3,6 @@ package com.sourcey.linachatbot;
 import android.app.Activity;
 import android.util.Log;
 
-import org.java_websocket.client.DefaultSSLWebSocketClientFactory;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.drafts.Draft;
 import org.java_websocket.handshake.ServerHandshake;
@@ -11,9 +10,6 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.net.URI;
-import java.security.NoSuchAlgorithmException;
-
-import javax.net.ssl.SSLContext;
 
 /**
  * Created by amrezzat on 3/18/2017.
@@ -67,11 +63,15 @@ public class getResponse extends WebSocketClient {
                 String replyMsg = replyJSON.getString("msg");
                 String messageTime = replyJSON.getString("formated_timestamp");
                 String messageID = replyJSON.getString("msg_id");
-                String intentData = replyJSON.getString("intent_data");
+                String extraData = replyJSON.getString("data");
                 DefaultHashMap<String, String> data = new DefaultHashMap<>("");
                 if (type.equals("intent")) {
-                    data.put("intentData", intentData);
+                    if(extraData.equals("null")){
+                        return;
+                    }
+                    data.put("intentData", extraData);
                 }
+                data.put("line_id", replyJSON.getString("line_id"));
                 data.put("type", type);
                 data.put("formattedTime", messageTime);
                 data.put("message", replyMsg);
@@ -94,18 +94,6 @@ public class getResponse extends WebSocketClient {
         });
         Log.i(LOG_TAG, "Connection closed by " + (remote ? "remote peer" : "us") + " with code " + code);
         open = false;
-        if (serverUri != null) {
-            getResponse response = new getResponse(serverUri, listener, activity);
-            if (serverUri.toString().indexOf("wss") == 0) {
-                try {
-                    SSLContext sslContext = SSLContext.getDefault();
-                    response.setWebSocketFactory(new DefaultSSLWebSocketClientFactory(sslContext));
-                } catch (NoSuchAlgorithmException e) {
-                    e.printStackTrace();
-                }
-            }
-            response.connect();
-        }
     }
 
     @Override
