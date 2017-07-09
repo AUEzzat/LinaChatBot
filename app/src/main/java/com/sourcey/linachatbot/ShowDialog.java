@@ -5,7 +5,7 @@ import android.app.Dialog;
 import android.content.DialogInterface;
 import android.os.Bundle;
 import android.support.v4.app.DialogFragment;
-import android.app.AlertDialog;
+import android.support.v7.app.AlertDialog;
 import android.widget.EditText;
 
 /**
@@ -37,14 +37,10 @@ public class ShowDialog extends DialogFragment {
         }
         final DefaultHashMap<String, String> data = (DefaultHashMap<String, String>) getArguments().getSerializable("data");
         final int carryId = getArguments().getInt("carry_id");
-        if (carryId == 10) {
-            builder.setView(R.layout.edit_real_time);
-        } else if (carryId == 40) {
-            builder.setView(R.layout.show_message_content);
-        }
 
         builder.setTitle(getArguments().getString("title"))
                 .setMessage(getArguments().getString("message"))
+                .setCancelable(true)
                 .setItems(list, new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int which) {
                         mListener.onFragmentClick(which + carryId, data);

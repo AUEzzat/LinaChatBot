@@ -32,6 +32,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
@@ -106,17 +107,16 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted,
     private int counterId = 10000;
     private String TimerID;
     private String HolderID;
-    private boolean closing = false;
     private Set<String> waitingPerm = new ArraySet<>();
     private String waitingJSON;
 
 
     @Override
     public void onPermissionsGranted(int requestCode, List<String> list) {
-        for(int i =0;i<list.size();i++){
+        for (int i = 0; i < list.size(); i++) {
             waitingPerm.add(list.get(i));
         }
-        if(waitingPerm.equals(StartIntent.reqPerms)) {
+        if (waitingPerm.equals(StartIntent.reqPerms)) {
             DefaultHashMap<String, String> waitingMap = new DefaultHashMap<>("");
             waitingMap.put("intentData", waitingJSON);
             try {
@@ -199,23 +199,29 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted,
             });
             dialog.show();
         } else if (action == 2) {
-            FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
-            // Create and show the dialog.
-            ShowDialog messageDialog = new ShowDialog();
-            Bundle dialogBundle = new Bundle();
-            dialogBundle.putSerializable("data", details);
-            dialogBundle.putInt("carry_id", 10);
-            dialogBundle.putString("redB", "OK");
-            dialogBundle.putString("greenB", "Cancel");
-            messageDialog.setArguments(dialogBundle);
-            messageDialog.show(ft, "dialog");
-        } else if (action == 15) {
-            if (data.get("message").equals("")) {
-                new CustomToast(getBaseContext(), "Message can't be empty", true);
-                return;
-            }
-            sendMessageHelper(token, "history", data.get("message"), data.get("id"), false);
-        } else if (action == 25) {
+            AlertDialog dialog = new AlertDialog.Builder(MainActivity.this).create();
+            LayoutInflater inflater = LayoutInflater.from(MainActivity.this);
+            View view = inflater.inflate(R.layout.edit_real_time, null); // xml Layout file for imageView
+            final String messageID = data.get("id");
+            final EditText messageText = (EditText) view.findViewById(R.id.new_message);
+            dialog.setView(view);
+            dialog.setButton(DialogInterface.BUTTON_NEGATIVE, "Cancel", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                }
+            });
+            dialog.setButton(DialogInterface.BUTTON_POSITIVE, "OK", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    if (messageText.getText().toString().equals("")) {
+                        new CustomToast(getBaseContext(), "Message can't be empty", true);
+                        return;
+                    }
+                    sendMessageHelper(token, "history", messageText.getText().toString(), messageID, false);
+                }
+            });
+            dialog.show();
+        }  else if (action == 25) {
             deleteChatHistory clearChatHistory = new deleteChatHistory();
             clearChatHistory.execute();
         } else if (action == 35 || action == 37) {
@@ -250,7 +256,6 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted,
     @Override
     protected void onStop() {
         super.onStop();
-        closing = true;
         if (networkStateReceiver != null) {
             try {
                 unregisterReceiver(networkStateReceiver);
@@ -594,8 +599,8 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted,
     public void onTaskCompleted(final DefaultHashMap<String, String> data) {
         String type = data.get("type");
         if (type.equals("close")) {
-            if (getResponse.getReadyState() == 3 && !closing) {
-                getResponse.connect();
+            if (!getResponse.open) {
+                setGetResponse(token);
             }
             return;
         }
@@ -609,7 +614,7 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted,
             String messageText = data.get("message");
             String id = data.get("id");
             String lineId = data.get("line_id");
-            if(data.containsKey("extra_perm")) {
+            if (data.containsKey("extra_perm")) {
                 waitingJSON = data.get("extra_perm");
                 HolderID = id;
                 return;
