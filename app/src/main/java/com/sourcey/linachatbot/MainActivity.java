@@ -15,9 +15,11 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.preference.PreferenceManager;
+import android.support.annotation.NonNull;
 import android.support.design.internal.NavigationMenuView;
 import android.support.design.widget.NavigationView;
 import android.support.v4.app.FragmentTransaction;
+import android.support.v4.util.ArraySet;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.AlertDialog;
@@ -61,8 +63,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -72,10 +76,12 @@ import butterknife.Bind;
 import butterknife.ButterKnife;
 import co.intentservice.chatui.ChatView;
 import co.intentservice.chatui.models.ChatMessage;
+import pub.devrel.easypermissions.EasyPermissions;
 
 import static com.sourcey.linachatbot.characterNumber.get;
 
-public class MainActivity extends AppCompatActivity implements OnTaskCompleted, NetworkStateReceiverListener, OnFragmentClickListener {
+public class MainActivity extends AppCompatActivity implements OnTaskCompleted,
+        NetworkStateReceiverListener, OnFragmentClickListener, EasyPermissions.PermissionCallbacks {
 
     @Bind(R.id.main_view)
     DrawerLayout mDrawer;
@@ -98,7 +104,56 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
     private ArrayList<String> messagesID = new ArrayList<>();
     private Map<String, DefaultHashMap<String, String>> messagesMap = new HashMap<>();
     private int counterId = 10000;
+    private String TimerID;
+    private String HolderID;
+    private boolean closing = false;
+    private Set<String> waitingPerm = new ArraySet<>();
+    private String waitingJSON;
 
+
+    @Override
+    public void onPermissionsGranted(int requestCode, List<String> list) {
+        for(int i =0;i<list.size();i++){
+            waitingPerm.add(list.get(i));
+        }
+        if(waitingPerm.equals(StartIntent.reqPerms)) {
+            DefaultHashMap<String, String> waitingMap = new DefaultHashMap<>("");
+            waitingMap.put("intentData", waitingJSON);
+            try {
+                new StartIntent(getBaseContext(), waitingMap, MainActivity.this, MainActivity.this);
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    @Override
+    public void onPermissionsDenied(int requestCode, List<String> list) {
+        String messageText = "Permissions denied; Couldn't do intended actions.";
+        messagesID.add(HolderID);
+        DefaultHashMap<String, String> currentMessageMap = new DefaultHashMap<>("");
+        currentMessageMap.put("type", "not_editable");
+        currentMessageMap.put("message", messageText);
+        messagesMap.put(HolderID, currentMessageMap);
+        final ChatMessage message =
+                new ChatMessage(messageText, System.currentTimeMillis(), ChatMessage.Type.RECEIVED);
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                chatView.addMessage(message);
+            }
+        });
+        sendMessageHelper(token, "history", messageText, TimerID, true);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        // EasyPermissions handles the request result.
+        EasyPermissions.onRequestPermissionsResult(requestCode, permissions, grantResults, this);
+    }
 
     @Override
     public void onFragmentClick(int action, DefaultHashMap<String, String> details) {
@@ -124,16 +179,14 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
             if (!imageUrl.equals("")) {
                 Picasso.with(MainActivity.this)
                         .load(imageUrl.replace("Http", "http"))
-                        .resize(185, 277)
                         .placeholder(R.drawable.no_photo_placeholder)
                         .into(img);
                 img.setBackgroundColor(getResources().getColor(R.color.primary));
-            }
-            else {
+            } else {
                 img.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
                 txt.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
             }
-            if(message.trim().equals("")) {
+            if (message.trim().equals("")) {
                 img.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
             }
             txt.setText(message);
@@ -161,7 +214,7 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
                 new CustomToast(getBaseContext(), "Message can't be empty", true);
                 return;
             }
-            sendMessageHelper(token, "history", data.get("message"), data.get("id"), true);
+            sendMessageHelper(token, "history", data.get("message"), data.get("id"), false);
         } else if (action == 25) {
             deleteChatHistory clearChatHistory = new deleteChatHistory();
             clearChatHistory.execute();
@@ -197,6 +250,7 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
     @Override
     protected void onStop() {
         super.onStop();
+        closing = true;
         if (networkStateReceiver != null) {
             try {
                 unregisterReceiver(networkStateReceiver);
@@ -492,7 +546,6 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
                 mDrawer,
                 message,
                 TSnackbar.LENGTH_INDEFINITE);
-        messagesID.add(id);
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -515,10 +568,11 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
                                 chatView.addMessage(message);
                             }
                         });
-                        sendMessageHelper(token, "history", messageText, id, false);
-                        DefaultHashMap<String, String> temp = messagesMap.get(id);
+                        sendMessageHelper(token, "history", messageText, TimerID, true);
+                        DefaultHashMap<String, String> temp = messagesMap.get(TimerID);
                         temp.put("message", messageText);
-                        messagesMap.put(id, temp);
+                        messagesMap.put(TimerID, temp);
+                        messagesID.add(TimerID);
                     }
                 };
                 timer.start();
@@ -526,6 +580,7 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
                     @Override
                     public void onClick(View v) {
                         timer.onFinish();
+                        timer.cancel();
                     }
                 }).setActionTextColor(Color.WHITE);
                 View timerBarView = timerBar.getView();
@@ -536,10 +591,12 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
     }
 
     @Override
-    public void onTaskCompleted(DefaultHashMap<String, String> data) {
+    public void onTaskCompleted(final DefaultHashMap<String, String> data) {
         String type = data.get("type");
-        if(type.equals("close")){
-            getResponse.connect();
+        if (type.equals("close")) {
+            if (getResponse.getReadyState() == 3 && !closing) {
+                getResponse.connect();
+            }
             return;
         }
         Long formattedTime;
@@ -552,9 +609,16 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
             String messageText = data.get("message");
             String id = data.get("id");
             String lineId = data.get("line_id");
-            if (data.get("extra").equals("start_timer")) {
+            if(data.containsKey("extra_perm")) {
+                waitingJSON = data.get("extra_perm");
+                HolderID = id;
+                return;
+            }
+            if (data.get("extra_timer").equals("start_timer")) {
                 setTimer(Integer.parseInt(data.get("extra_minute")), Integer.parseInt(data.get("extra_second")), id);
-            } else if (data.get("extra").equals("delete_all_notes")) {
+                TimerID = id;
+            }
+            if (data.get("extra_notes").equals("delete_all_notes")) {
                 FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
                 // Create and show the dialog.
                 ShowDialog messageDialog = new ShowDialog();
@@ -566,17 +630,19 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
                 dialogBundle.putInt("carry_id", 30);
                 messageDialog.setArguments(dialogBundle);
                 messageDialog.show(ft, "dialog");
-            } else if (data.get("extra_type").equals("intent")) {
-                sendMessageHelper(token, "history", messageText, id, false);
-            } else {
-                messagesID.add(id);
-                DefaultHashMap<String, String> currentMessageMap = messageMediaSeparator(messageText);
-                if (lineId.equals("null")) {
-                    currentMessageMap.put("type", "not_editable");
-                }
-                currentMessageMap.put("pMessage", data.get("previousMessage"));
-                messagesMap.put(id, currentMessageMap);
+                return;
             }
+            if (data.get("extra_type").equals("intent")) {
+                sendMessageHelper(token, "history", messageText, id, true);
+            }
+
+            messagesID.add(id);
+            DefaultHashMap<String, String> currentMessageMap = messageMediaSeparator(messageText);
+            if (lineId.equals("null")) {
+                currentMessageMap.put("type", "not_editable");
+            }
+            currentMessageMap.put("pMessage", data.get("previousMessage"));
+            messagesMap.put(id, currentMessageMap);
             final ChatMessage message = new ChatMessage(messageText, formattedTime, ChatMessage.Type.RECEIVED);
             runOnUiThread(new Runnable() {
                 @Override
@@ -585,11 +651,18 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
                 }
             });
         } else if (type.equals("intent")) {
-            try {
-                new StartIntent(getBaseContext(), data, this);
-            } catch (JSONException e) {
-                e.printStackTrace();
-            }
+
+            runOnUiThread(new Runnable() {
+                public void run() {
+                    try {
+
+                        new StartIntent(getBaseContext(), data, MainActivity.this, MainActivity.this);
+
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
         }
     }
 
@@ -734,7 +807,7 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
                         .appendQueryParameter("limit", oldMessagesRetrieveLimit);
                 URL url = new URL(chatHistoryUrl.toString());
                 urlConnection = (HttpURLConnection) url.openConnection();
-                urlConnection.setDoOutput(true);
+                urlConnection.setDoInput(true);
                 urlConnection.setRequestMethod("GET");
                 urlConnection.setUseCaches(false);
                 urlConnection.setConnectTimeout(10000);

@@ -5,7 +5,6 @@ import android.app.Activity;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.net.Uri;
 import android.provider.AlarmClock;
@@ -13,8 +12,7 @@ import android.provider.CalendarContract;
 import android.provider.CalendarContract.Events;
 import android.provider.ContactsContract;
 import android.provider.Settings;
-import android.support.annotation.NonNull;
-import android.support.v4.app.ActivityCompat;
+import android.support.v4.util.ArraySet;
 import android.util.Log;
 
 import org.apache.commons.lang3.text.WordUtils;
@@ -27,6 +25,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 import pub.devrel.easypermissions.EasyPermissions;
 
@@ -34,20 +33,23 @@ import pub.devrel.easypermissions.EasyPermissions;
  * Created by amrezzat on 4/6/2017.
  */
 
-public class StartIntent extends Activity implements EasyPermissions.PermissionCallbacks{
+public class StartIntent {
     private final String LOG_TAG = StartIntent.class.getSimpleName();
 
-    StartIntent(Context context, DefaultHashMap<String, String> data, OnTaskCompleted listener) throws JSONException {
-        Intent intent = null;
-        String message = "";
+    public static Set<String> reqPerms;
+
+    StartIntent(Context context, DefaultHashMap<String, String> data, OnTaskCompleted listener, Activity activity) throws JSONException {
+        Intent intent;
         JSONArray intentJSONArray = new JSONArray(data.get("intentData"));
         String noteTitle;
         String noteText;
         NotesDatabaseHandler noteData;
         Note note;
         int noteCount;
-
+        reqPerms = new ArraySet<>();
+        String message = "";
         for (int i = 0; i < intentJSONArray.length(); i++) {
+            intent = null;
             JSONArray currentJSONArray = intentJSONArray.getJSONArray(i);
             DefaultHashMap<String, String> currentIntentData = new DefaultHashMap<>("");
             currentIntentData.put("type", currentJSONArray.getString(0));
@@ -60,7 +62,7 @@ public class StartIntent extends Activity implements EasyPermissions.PermissionC
                 case "start_timer":
                     message += '\n' + String.format(Locale.UK, "Timer of %s:%02d started at %s.", currentIntentData.get("minute"),
                             Integer.parseInt(currentIntentData.get("second")), DateFormat.getTimeInstance().format(new Date()));
-                    data.put("extra", "start_timer");
+                    data.put("extra_timer", "start_timer");
                     data.put("extra_minute", currentIntentData.get("minute"));
                     data.put("extra_second", currentIntentData.get("second"));
                     break;
@@ -92,19 +94,35 @@ public class StartIntent extends Activity implements EasyPermissions.PermissionC
                     break;
 
                 case "call_number":
-                    intent = new Intent(Intent.ACTION_CALL, Uri.parse("tel:" + currentIntentData.get("number")));
-                    message += String.format("called %s.", currentIntentData.get("number"));
-
-                    if (ActivityCompat.checkSelfPermission(context, Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
-                        Log.d(LOG_TAG, "Call Permission Not Granted");
-                        message += "Call Permission Not Granted.";
-                        return;
+                    if (EasyPermissions.hasPermissions(context, Manifest.permission.CALL_PHONE)) {
+                        intent = new Intent(Intent.ACTION_CALL, Uri.parse("tel:" + currentIntentData.get("number")));
+                        message += String.format("called %s.", currentIntentData.get("number"));
+                    } else {
+                        Log.d(LOG_TAG, "Call Permission Denied");
+                        reqPerms.add(Manifest.permission.CALL_PHONE);
                     }
                     break;
 
-                case "view_contact":
+
                 case "call_contact":
+                    if (!EasyPermissions.hasPermissions(context, Manifest.permission.CALL_PHONE)) {
+                        Log.d(LOG_TAG, "Call Contact Permission Denied");
+                    }
                 case "message_contact":
+                    if (!EasyPermissions.hasPermissions(context, Manifest.permission.SEND_SMS) && currentIntentData.get("type").equals("message_contact")) {
+                        reqPerms.add(Manifest.permission.CALL_PHONE);
+                        Log.d(LOG_TAG, "Message Contact Permission Denied");
+                    }
+                case "view_contact":
+                    if (!EasyPermissions.hasPermissions(context, Manifest.permission.READ_CONTACTS)) {
+                        reqPerms.add(Manifest.permission.READ_CONTACTS);
+                        Log.d(LOG_TAG, "Access Contacts Permission Denied");
+                        break;
+                    } else if (!EasyPermissions.hasPermissions(context, Manifest.permission.SEND_SMS) && currentIntentData.get("type").equals("message_contact")) {
+                        break;
+                    } else if (!EasyPermissions.hasPermissions(context, Manifest.permission.CALL_PHONE) && currentIntentData.get("type").equals("call_contact")) {
+                        break;
+                    }
                     String phoneNumber = "";
                     String contactName = "";
                     ContentResolver cr = context.getContentResolver();
@@ -152,15 +170,14 @@ public class StartIntent extends Activity implements EasyPermissions.PermissionC
                         message += String.format("No phone number was found for %s.", contactName);
                         break;
                     }
+
                     if (currentIntentData.get("type").equals("call_contact")) {
+
                         intent = new Intent(Intent.ACTION_CALL, Uri.parse("tel:" + phoneNumber));
                         message += String.format("called %s(%s)", currentIntentData.get("contact_name"), phoneNumber);
-                        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.CALL_PHONE) != PackageManager.PERMISSION_GRANTED) {
-                            message += "Call Permission Not Granted.";
-                            Log.d(LOG_TAG, "Call Permission Not Granted");
-                            return;
-                        }
+
                     } else if (currentIntentData.get("type").equals("message_contact")) {
+
                         intent = new Intent(Intent.ACTION_VIEW, Uri.parse("sms:" + phoneNumber));
                         intent.putExtra("sms_body", currentIntentData.get("message"));
                         message += String.format("%s is sent to %s(%s).", currentIntentData.get("message"), contactName, phoneNumber);
@@ -171,10 +188,16 @@ public class StartIntent extends Activity implements EasyPermissions.PermissionC
                     break;
 
                 case "message_number":
-                    intent = new Intent(Intent.ACTION_VIEW, Uri.parse("sms:" + currentIntentData.get("number")));
-                    intent.putExtra("sms_body", currentIntentData.get("message"));
-                    message += String.format("%s is sent to %s.", currentIntentData.get("message"), currentIntentData.get("number"));
+                    if (EasyPermissions.hasPermissions(context, Manifest.permission.SEND_SMS)) {
+                        intent = new Intent(Intent.ACTION_VIEW, Uri.parse("sms:" + currentIntentData.get("number")));
+                        intent.putExtra("sms_body", currentIntentData.get("message"));
+                        message += String.format("%s is sent to %s.", currentIntentData.get("message"), currentIntentData.get("number"));
+                    } else {
+                        reqPerms.add(Manifest.permission.SEND_SMS);
+                        Log.d(LOG_TAG, "Message Number Permission Denied");
+                    }
                     break;
+
 
                 case "send_email":
                     intent = new Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:"))
@@ -193,65 +216,70 @@ public class StartIntent extends Activity implements EasyPermissions.PermissionC
                     break;
 
                 case "set_event":
-                    String[] startStr = currentIntentData.get("start_time").split(":");
-                    ArrayList<Integer> startInt = new ArrayList<>();
-                    Calendar beginTime = Calendar.getInstance();
-                    try {
-                        for (String s : startStr) startInt.add(Integer.valueOf(s));
-                        switch (startInt.size()) {
-                            case 5:
-                                beginTime.set(startInt.get(0), startInt.get(1), startInt.get(2), startInt.get(3), startInt.get(4));
-                                break;
-                            case 3:
-                                beginTime.set(startInt.get(0), startInt.get(1), startInt.get(2));
-                                break;
-                            case 2:
-                                beginTime.set(Calendar.HOUR_OF_DAY, startInt.get(0));
-                                beginTime.set(Calendar.MINUTE, startInt.get(1));
-                                break;
+                    if (EasyPermissions.hasPermissions(context, Manifest.permission.WRITE_CALENDAR)) {
+                        String[] startStr = currentIntentData.get("start_time").split(":");
+                        ArrayList<Integer> startInt = new ArrayList<>();
+                        Calendar beginTime = Calendar.getInstance();
+                        try {
+                            for (String s : startStr) startInt.add(Integer.valueOf(s));
+                            switch (startInt.size()) {
+                                case 5:
+                                    beginTime.set(startInt.get(0), startInt.get(1), startInt.get(2), startInt.get(3), startInt.get(4));
+                                    break;
+                                case 3:
+                                    beginTime.set(startInt.get(0), startInt.get(1), startInt.get(2));
+                                    break;
+                                case 2:
+                                    beginTime.set(Calendar.HOUR_OF_DAY, startInt.get(0));
+                                    beginTime.set(Calendar.MINUTE, startInt.get(1));
+                                    break;
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
                         }
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                    //set(year, month, day, hours, minutes)
-                    String[] endStr = currentIntentData.get("end_time").split(":");
-                    ArrayList<Integer> endInt = new ArrayList<>();
-                    Calendar endTime = Calendar.getInstance();
-                    try {
-                        for (String s : endStr) endInt.add(Integer.valueOf(s));
-                        switch (endInt.size()) {
-                            case 5:
-                                endTime.set(endInt.get(0), endInt.get(1), endInt.get(2), endInt.get(3), endInt.get(4));
-                                break;
-                            case 3:
-                                endTime.set(endInt.get(0), endInt.get(1), endInt.get(2));
-                                break;
-                            case 2:
-                                endTime.set(Calendar.HOUR_OF_DAY, endInt.get(0));
-                                endTime.set(Calendar.MINUTE, endInt.get(1));
-                                break;
-                        }
+                        //set(year, month, day, hours, minutes)
+                        String[] endStr = currentIntentData.get("end_time").split(":");
+                        ArrayList<Integer> endInt = new ArrayList<>();
+                        Calendar endTime = Calendar.getInstance();
+                        try {
+                            for (String s : endStr) endInt.add(Integer.valueOf(s));
+                            switch (endInt.size()) {
+                                case 5:
+                                    endTime.set(endInt.get(0), endInt.get(1), endInt.get(2), endInt.get(3), endInt.get(4));
+                                    break;
+                                case 3:
+                                    endTime.set(endInt.get(0), endInt.get(1), endInt.get(2));
+                                    break;
+                                case 2:
+                                    endTime.set(Calendar.HOUR_OF_DAY, endInt.get(0));
+                                    endTime.set(Calendar.MINUTE, endInt.get(1));
+                                    break;
+                            }
 
-                    } catch (Exception e) {
-                        e.printStackTrace();
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                        intent = new Intent(Intent.ACTION_INSERT)
+                                .setData(Events.CONTENT_URI)
+                                .putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, beginTime.getTimeInMillis())
+                                .putExtra(CalendarContract.EXTRA_EVENT_END_TIME, endTime.getTimeInMillis())
+                                .putExtra(Events.TITLE, currentIntentData.get("title"))
+                                .putExtra(Events.DESCRIPTION, currentIntentData.get("description"))
+                                .putExtra(Events.EVENT_LOCATION, currentIntentData.get("location"));
+                        String title = currentIntentData.get("title");
+                        String location = currentIntentData.get("location");
+                        if (!currentIntentData.get("description").equals("")) {
+                            title = title + ":";
+                        }
+                        if (!location.equals("")) {
+                            location = "at " + location + ".";
+                        }
+                        message += String.format("%s\n%s\nfrom %s\n to %s\n%s", title, currentIntentData.get("description"),
+                                beginTime.getTime(), endTime.getTime(), location);
+                    } else {
+                        reqPerms.add(Manifest.permission.WRITE_CALENDAR);
+                        Log.d(LOG_TAG, "Calender Permission Denied");
                     }
-                    intent = new Intent(Intent.ACTION_INSERT)
-                            .setData(Events.CONTENT_URI)
-                            .putExtra(CalendarContract.EXTRA_EVENT_BEGIN_TIME, beginTime.getTimeInMillis())
-                            .putExtra(CalendarContract.EXTRA_EVENT_END_TIME, endTime.getTimeInMillis())
-                            .putExtra(Events.TITLE, currentIntentData.get("title"))
-                            .putExtra(Events.DESCRIPTION, currentIntentData.get("description"))
-                            .putExtra(Events.EVENT_LOCATION, currentIntentData.get("location"));
-                    String title = currentIntentData.get("title");
-                    String location = currentIntentData.get("location");
-                    if (!currentIntentData.get("description").equals("")) {
-                        title = title + ":";
-                    }
-                    if (!location.equals("")) {
-                        location = "at " + location;
-                    }
-                    message += String.format("%s\n%s\nfrom %s\n to %s\n%s.", title, currentIntentData.get("description"),
-                            beginTime.getTime(), endTime.getTime(), location);
                     break;
 
                 case "show_date_time":
@@ -276,7 +304,7 @@ public class StartIntent extends Activity implements EasyPermissions.PermissionC
                     if (note != null) {
                         message += "note already exists\nuse edit note to edit text\nor choose another title.";
                     } else {
-                        noteText = currentIntentData.get("description");
+                        noteText = currentIntentData.get("text");
                         note = new Note(noteTitle, noteText);
                         noteData.addNote(note);
                         if (!noteText.equals("")) {
@@ -349,6 +377,7 @@ public class StartIntent extends Activity implements EasyPermissions.PermissionC
                     break;
 
                 case "show_all_notes":
+
                     noteData = new NotesDatabaseHandler(context);
                     noteCount = noteData.getNotesCount();
                     message += "your notes are:\n";
@@ -369,41 +398,29 @@ public class StartIntent extends Activity implements EasyPermissions.PermissionC
                     }
                     break;
                 case "delete_all_notes":
-                    data.put("extra", "delete_all_notes");
+                    data.put("extra_notes", "delete_all_notes");
                     break;
+            }
+            if (intent != null) {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(intent);
             }
             message = WordUtils.capitalizeFully(message + "\n\n", '\n');
         }
-
-        if (intent != null) {
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            context.startActivity(intent);
+        if (reqPerms.size() > 0) {
+            String[] perms = new String[reqPerms.size()];
+            perms = new ArrayList<>(reqPerms).toArray(perms);
+            EasyPermissions.requestPermissions(activity, "Grant Permission to allow application functionality", 0, perms);
         }
-
         if (!message.equals("")) {
             data.put("type", "message");
             data.put("message", message.trim());
             data.put("extra_type", "intent");
+            if(reqPerms.size() > 0) {
+                data.put("extra_perm", intentJSONArray.toString());
+            }
             listener.onTaskCompleted(data);
         }
-    }
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-
-        // EasyPermissions handles the request result.
-        EasyPermissions.onRequestPermissionsResult(requestCode, permissions, grantResults, this);
-    }
-    @Override
-    public void onPermissionsGranted(int requestCode, List<String> list) {
-        // Some permissions have been granted
-        // ...
-    }
-
-    @Override
-    public void onPermissionsDenied(int requestCode, List<String> list) {
-        // Some permissions have been denied
-        // ...
     }
 
 }
