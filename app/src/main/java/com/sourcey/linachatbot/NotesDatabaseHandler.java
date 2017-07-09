@@ -131,7 +131,11 @@ public class NotesDatabaseHandler extends SQLiteOpenHelper {
         db.delete(TABLE_NOTES, KEY_TITLE + " = ?", new String[]{note.getTitle()});
         db.close();
     }
-
+    public void deleteAllNotes(){
+        SQLiteDatabase db = this.getWritableDatabase();
+        db.delete(TABLE_NOTES, null, null);
+        db.close();
+    }
     //Return last created note
     public Note getLastNote(){
         Note note = getAllNotes().get(getAllNotes().size() - 1);

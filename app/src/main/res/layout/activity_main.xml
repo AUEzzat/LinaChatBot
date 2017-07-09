@@ -17,7 +17,7 @@
         chatview:bubbleElevation="elevated"
         chatview:bubbleBackgroundRcv="@color/primary"
         chatview:bubbleBackgroundSend="@color/white"
-        chatview:sendBtnBackgroundTint="@color/primary"/>
+        chatview:sendBtnBackgroundTint="@color/primary" />
     <!-- The navigation drawer that comes from the right -->
     <!-- Note that `android:layout_gravity` needs to be set to 'end' -->
     <android.support.design.widget.NavigationView

@@ -22,6 +22,7 @@ public class getResponse extends WebSocketClient {
     private Activity activity;
     Boolean open = false;
     private URI serverUri;
+    private String previousMessage;
 
 
     public getResponse(URI serverUri, Draft draft, OnTaskCompleted listener, Activity activity) {
@@ -76,8 +77,13 @@ public class getResponse extends WebSocketClient {
                 data.put("formattedTime", messageTime);
                 data.put("message", replyMsg);
                 data.put("id", messageID);
-
+                if(previousMessage != null) {
+                    data.put("previousMessage", previousMessage);
+                }
                 listener.onTaskCompleted(data);
+            }
+            else {
+                previousMessage = replyJSON.getString("msg");
             }
         } catch (JSONException e) {
             e.printStackTrace();
@@ -86,6 +92,9 @@ public class getResponse extends WebSocketClient {
 
     @Override
     public void onClose(int code, String reason, boolean remote) {
+        DefaultHashMap<String, String> data = new DefaultHashMap<>("");
+        data.put("type", "close");
+        listener.onTaskCompleted(data);
         activity.runOnUiThread(new Runnable() {
             @Override
             public void run() {

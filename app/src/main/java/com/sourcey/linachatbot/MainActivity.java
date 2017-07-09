@@ -5,6 +5,7 @@ import android.app.PendingIntent;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
@@ -19,20 +20,25 @@ import android.support.design.widget.NavigationView;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.KeyEvent;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
 
 import com.androidadvance.topsnackbar.TSnackbar;
 import com.google.gson.Gson;
 import com.sourcey.linachatbot.NetworkStateReceiver.NetworkStateReceiverListener;
+import com.squareup.picasso.Picasso;
 
 import org.java_websocket.client.DefaultSSLWebSocketClientFactory;
 import org.json.JSONArray;
@@ -87,25 +93,59 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
     private String character;
     private boolean connected = false;
     private boolean retrievedMessages = false;
+    private boolean retrievingMessages = false;
     private NetworkStateReceiver networkStateReceiver;
     private ArrayList<String> messagesID = new ArrayList<>();
     private Map<String, DefaultHashMap<String, String>> messagesMap = new HashMap<>();
+    private int counterId = 10000;
 
 
     @Override
     public void onFragmentClick(int action, DefaultHashMap<String, String> details) {
         DefaultHashMap<String, String> data = new DefaultHashMap<>("");
-        if (details == null) {
-            return;
+        if (details != null) {
+            data.putAll(details);
         }
-        data.putAll(details);
         if (action == 0) {
             ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
             ClipData clip = ClipData.newPlainText(null, data.get("message"));
             clipboard.setPrimaryClip(clip);
             new CustomToast(getBaseContext(), "Message copied to the clipboard", true);
-        }
-        if (action == 2) {
+        } else if (action == 1) {
+            String imageUrl = data.get("image_url");
+//            String videoUrl = data.get("video_url");
+            String message = data.get("message").replace(imageUrl, "");
+            AlertDialog dialog = new AlertDialog.Builder(MainActivity.this).create();
+            LayoutInflater inflater = LayoutInflater.from(MainActivity.this);
+            dialog.setTitle("Message content");
+            View view = inflater.inflate(R.layout.show_message_content, null); // xml Layout file for imageView
+            ImageView img = (ImageView) view.findViewById(R.id.content_image);
+            TextView txt = (TextView) view.findViewById(R.id.content_text);
+            if (!imageUrl.equals("")) {
+                Picasso.with(MainActivity.this)
+                        .load(imageUrl.replace("Http", "http"))
+                        .resize(185, 277)
+                        .placeholder(R.drawable.no_photo_placeholder)
+                        .into(img);
+                img.setBackgroundColor(getResources().getColor(R.color.primary));
+            }
+            else {
+                img.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+                txt.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+            }
+            if(message.trim().equals("")) {
+                img.setLayoutParams(new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+            }
+            txt.setText(message);
+            dialog.setView(view);
+            dialog.setButton(DialogInterface.BUTTON_NEGATIVE, "Close", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+
+                }
+            });
+            dialog.show();
+        } else if (action == 2) {
             FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
             // Create and show the dialog.
             ShowDialog messageDialog = new ShowDialog();
@@ -116,13 +156,27 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
             dialogBundle.putString("greenB", "Cancel");
             messageDialog.setArguments(dialogBundle);
             messageDialog.show(ft, "dialog");
-        }
-        if (action == 15) {
+        } else if (action == 15) {
             if (data.get("message").equals("")) {
                 new CustomToast(getBaseContext(), "Message can't be empty", true);
                 return;
             }
             sendMessageHelper(token, "history", data.get("message"), data.get("id"), true);
+        } else if (action == 25) {
+            deleteChatHistory clearChatHistory = new deleteChatHistory();
+            clearChatHistory.execute();
+        } else if (action == 35 || action == 37) {
+            String messageText = data.get("message");
+            String messageID = data.get("id");
+            final ChatMessage message = new ChatMessage(messageText, System.currentTimeMillis(), ChatMessage.Type.RECEIVED);
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    chatView.addMessage(message);
+                }
+            });
+            sendMessageHelper(token, "history", messageText, messageID, false);
+
         }
     }
 
@@ -200,7 +254,7 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
 
             @Override
             public boolean sendMessage(ChatMessage ChatMessage) {
-                return sendMessageHelper(token, "send", ChatMessage.getMessage(), ChatMessage.getFormattedTime(), false);
+                return sendMessageHelper(token, "send", ChatMessage.getMessage(), Integer.toString(counterId++), false);
             }
         });
     }
@@ -265,7 +319,7 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
 
             @Override
             public void onDrawerClosed(View drawerView) {
-
+                ((NavigationMenuView) navDrawer.getChildAt(0)).smoothScrollToPosition(0);
             }
 
             @Override
@@ -401,10 +455,20 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
                             mgr.set(AlarmManager.RTC, System.currentTimeMillis() + 100, mPendingIntent);
                             System.exit(0);
                         } else if (menuItem.getItemId() == R.id.action_delete_chat_history) {
-                            deleteChatHistory clearChatHistory = new deleteChatHistory();
-                            clearChatHistory.execute();
+                            FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
+                            // Create and show the dialog.
+                            ShowDialog messageDialog = new ShowDialog();
+                            Bundle dialogBundle = new Bundle();
+                            dialogBundle.putString("message", "Are you sure you want to clear all chat history?");
+                            dialogBundle.putString("title", "Delete chat history?");
+                            dialogBundle.putString("redB", "Delete");
+                            dialogBundle.putString("greenB", "Cancel");
+                            dialogBundle.putInt("carry_id", 20);
+                            messageDialog.setArguments(dialogBundle);
+                            messageDialog.show(ft, "dialog");
+                            return true;
                         } else if (menuItem.getItemId() == R.id.action_help) {
-                            return false;
+                            return true;
                         }
                         setTitle(menuItem.getTitle() + " Lina");
                         characterType.setTitle(menuItem.getTitle());
@@ -474,6 +538,10 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
     @Override
     public void onTaskCompleted(DefaultHashMap<String, String> data) {
         String type = data.get("type");
+        if(type.equals("close")){
+            getResponse.connect();
+            return;
+        }
         Long formattedTime;
         try {
             formattedTime = Long.parseLong(data.get("formattedTime"));
@@ -486,6 +554,18 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
             String lineId = data.get("line_id");
             if (data.get("extra").equals("start_timer")) {
                 setTimer(Integer.parseInt(data.get("extra_minute")), Integer.parseInt(data.get("extra_second")), id);
+            } else if (data.get("extra").equals("delete_all_notes")) {
+                FragmentTransaction ft = getSupportFragmentManager().beginTransaction();
+                // Create and show the dialog.
+                ShowDialog messageDialog = new ShowDialog();
+                Bundle dialogBundle = new Bundle();
+                dialogBundle.putString("message", "Are you sure you want to delete all notes?");
+                dialogBundle.putString("title", "Delete All Notes");
+                dialogBundle.putString("redB", "Yes");
+                dialogBundle.putString("greenB", "No");
+                dialogBundle.putInt("carry_id", 30);
+                messageDialog.setArguments(dialogBundle);
+                messageDialog.show(ft, "dialog");
             } else if (data.get("extra_type").equals("intent")) {
                 sendMessageHelper(token, "history", messageText, id, false);
             } else {
@@ -494,6 +574,7 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
                 if (lineId.equals("null")) {
                     currentMessageMap.put("type", "not_editable");
                 }
+                currentMessageMap.put("pMessage", data.get("previousMessage"));
                 messagesMap.put(id, currentMessageMap);
             }
             final ChatMessage message = new ChatMessage(messageText, formattedTime, ChatMessage.Type.RECEIVED);
@@ -531,7 +612,7 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
             imageUrl = imageMatcher.group();
             currentMessageMap.put("image_url", imageUrl);
         }
-        currentMessageMap.put("message", messageText.replace(videoUrl, "").replace(imageUrl, ""));
+        currentMessageMap.put("message", messageText);
         return currentMessageMap;
     }
 
@@ -595,11 +676,14 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
         private final String LOG_TAG = getOldMessages.class.getSimpleName();
 
         private ArrayList<ChatMessage> getOldMessagesFromJson(String oldMessagesJsonStr) throws JSONException, IOException, ParseException {
+            if (retrievingMessages || retrievedMessages) {
+                return null;
+            }
+            retrievingMessages = true;
             Log.i(LOG_TAG, oldMessagesJsonStr);
             JSONObject oldMessagesJsonObj = new JSONObject(oldMessagesJsonStr);
             JSONArray oldMessagesJsonArray = oldMessagesJsonObj.getJSONArray("results");
             ArrayList<ChatMessage> oldMessages = new ArrayList<>(oldMessagesJsonArray.length());
-
             for (int i = 0; i < oldMessagesJsonArray.length(); i++) {
                 JSONObject oldMessage = oldMessagesJsonArray.getJSONObject(i);
                 String id = oldMessage.getString("id");
@@ -615,7 +699,7 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
                 if (lineId.equals("null")) {
                     currentMessageMap.put("type", "not_editable");
                 }
-                messagesMap.put(id, currentMessageMap);
+
                 if (messageText.equals("")) {
                     messageText = "¯\\_(ツ)_/¯";
                 }
@@ -624,7 +708,10 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
                 ChatMessage.Type messageType = ChatMessage.Type.RECEIVED;
                 if (humanUser.equals("user")) {
                     messageType = ChatMessage.Type.SENT;
+                } else if (i + 1 < oldMessagesJsonArray.length()) {
+                    currentMessageMap.put("pMessage", oldMessagesJsonArray.getJSONObject(i + 1).getString("message"));
                 }
+                messagesMap.put(id, currentMessageMap);
                 oldMessages.add(new ChatMessage(messageText, messageTime, messageType));
             }
             Collections.reverse(oldMessages);
@@ -692,6 +779,7 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted, 
 
         @Override
         protected void onPostExecute(ArrayList<ChatMessage> oldMessages) {
+            retrievingMessages = false;
             if (oldMessages != null && !retrievedMessages) {
                 retrievedMessages = true;
                 chatView.addMessages(oldMessages);
