@@ -58,6 +58,8 @@ public class StartIntent {
                 currentIntentData.put(s.substring(0, s.indexOf('(')),
                         s.substring(s.indexOf('(') + 2, s.indexOf(')') - 1));
             }
+            Log.v("ss",currentIntentData.toString());
+            Log.v("sss", currentJSONArray.toString());
             switch (currentIntentData.get("type")) {
                 case "start_timer":
                     message += '\n' + String.format(Locale.UK, "Timer of %s:%02d started at %s.", currentIntentData.get("minute"),
@@ -84,7 +86,7 @@ public class StartIntent {
                             String.format(Locale.UK, "%02d", minute));
                     break;
 
-                case "view_next_alarm":
+                case "next_alarm":
                     String nextAlarm = Settings.System.getString(context.getContentResolver(), Settings.System.NEXT_ALARM_FORMATTED);
                     if (!nextAlarm.equals("")) {
                         message += String.format("next alarm at %s", nextAlarm);
