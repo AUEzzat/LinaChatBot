@@ -93,6 +93,7 @@ public class getToken extends AsyncTask<String, Void, DefaultHashMap<String, Str
                     HttpURLConnection.HTTP_CREATED).contains(HttpResult);
             canReachServer = Arrays.asList(HttpURLConnection.HTTP_BAD_REQUEST, HttpURLConnection.HTTP_UNAUTHORIZED,
                     HttpURLConnection.HTTP_FORBIDDEN, HttpURLConnection.HTTP_NOT_FOUND).contains(HttpResult);
+            Log.i(LOG_TAG, HttpResultStr);
             if (canRetrieveData) {
                 BufferedReader br = new BufferedReader(new InputStreamReader(urlConnection.getInputStream(), "utf-8"));
                 String line;

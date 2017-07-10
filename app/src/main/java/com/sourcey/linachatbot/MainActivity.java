@@ -180,6 +180,7 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted,
                 Picasso.with(MainActivity.this)
                         .load(imageUrl.replace("Http", "http"))
                         .placeholder(R.drawable.no_photo_placeholder)
+                        .resize(185, 287)
                         .into(img);
                 img.setBackgroundColor(getResources().getColor(R.color.primary));
             } else {
@@ -812,7 +813,7 @@ public class MainActivity extends AppCompatActivity implements OnTaskCompleted,
                         .appendQueryParameter("limit", oldMessagesRetrieveLimit);
                 URL url = new URL(chatHistoryUrl.toString());
                 urlConnection = (HttpURLConnection) url.openConnection();
-                urlConnection.setDoInput(true);
+                urlConnection.setDoOutput(true);
                 urlConnection.setRequestMethod("GET");
                 urlConnection.setUseCaches(false);
                 urlConnection.setConnectTimeout(10000);

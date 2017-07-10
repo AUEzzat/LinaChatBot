@@ -397,8 +397,19 @@ public class StartIntent {
                         message += "you have no notes to show";
                     }
                     break;
+
                 case "delete_all_notes":
                     data.put("extra_notes", "delete_all_notes");
+                    break;
+
+                case "play_trailer":
+                    intent = new Intent(Intent.ACTION_VIEW);
+                    intent.setData(Uri.parse(data.get("trailer_link")));
+                    message += "playing trailer";
+                    break;
+
+                case "display_message":
+                    message += data.get("message");
                     break;
             }
             if (intent != null) {
@@ -416,7 +427,7 @@ public class StartIntent {
             data.put("type", "message");
             data.put("message", message.trim());
             data.put("extra_type", "intent");
-            if(reqPerms.size() > 0) {
+            if (reqPerms.size() > 0) {
                 data.put("extra_perm", intentJSONArray.toString());
             }
             listener.onTaskCompleted(data);
